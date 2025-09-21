@@ -45,7 +45,7 @@ const fetchUrlContent = async (url: string): Promise<string> => {
     
     // Use production URL in production, localhost in development
     const scraperEndpoint = process.env.NODE_ENV === 'production' 
-        ? 'https://veritas-ai-backend.onrender.com/scrape'  // Replace with your actual Render URL
+        ? 'https://veritas-ai-vpls.onrender.com/'  // Replace with your actual Render URL
         : 'http://localhost:5000/scrape';
     
     try {
