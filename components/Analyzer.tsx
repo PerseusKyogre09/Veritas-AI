@@ -39,42 +39,40 @@ const extractTextFromHtml = (html: string): string => {
     }
 }
 
-// In a production app, this would be a backend service to handle scraping.
-// To demonstrate live functionality, we use a public CORS proxy.
-// NOTE: Public proxies are often rate-limited and are not suitable for production.
+// Fetch URL content using our Python backend scraping service
 const fetchUrlContent = async (url: string): Promise<string> => {
-    console.log(`Fetching content for URL via CORS proxy: ${url}`);
+    console.log(`Fetching content for URL via Python scraping service: ${url}`);
     
-    // Using a public CORS proxy to bypass browser security (CORS) for this demo.
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    // Use production URL in production, localhost in development
+    const scraperEndpoint = process.env.NODE_ENV === 'production' 
+        ? 'https://veritas-ai-backend.onrender.com/scrape'  // Replace with your actual Render URL
+        : 'http://localhost:5000/scrape';
     
     try {
-        const response = await fetch(proxyUrl, {
+        const response = await fetch(scraperEndpoint, {
+            method: 'POST',
             headers: {
-                'Accept': 'text/html'
-            }
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url })
         });
         
+        const data = await response.json();
+        
         if (!response.ok) {
-            // Try to give a more specific error based on status code
-            if(response.status === 404) throw new Error(`The URL was not found (404 Error). Please check the link.`);
-            throw new Error(`Failed to fetch content. The server responded with status: ${response.status}`);
+            throw new Error(data.error || `Failed to scrape content. Status: ${response.status}`);
         }
         
-        const htmlContent = await response.text();
-        if (!htmlContent) {
-            return ""; // Return empty if the fetched page is empty
+        if (!data.content || !data.content.trim()) {
+            throw new Error("No readable content could be extracted from the URL.");
         }
         
-        // Extract readable text from the fetched HTML to pass to the AI
-        const textContent = extractTextFromHtml(htmlContent);
-
-        return textContent;
+        return data.content;
 
     } catch (error) {
         console.error("Error fetching URL content:", error);
-        if (error instanceof Error && error.message.includes('Failed to fetch')) {
-             throw new Error("A network error occurred. Please check your internet connection or the CORS proxy status.");
+        if (error instanceof Error && error.message.includes('fetch')) {
+            throw new Error("Could not connect to the scraping service. Please ensure the backend service is running.");
         }
         // Re-throw the original or a more generic error
         throw new Error(error instanceof Error ? error.message : "Could not fetch or process content from the URL. It may be offline or protected from scraping.");
@@ -211,7 +209,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
                     )}
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 px-1">
-                    <strong>Note:</strong> To bypass browser security (CORS), this demo uses a free, public proxy. This is not suitable for production use as it can be slow or rate-limited. The app then attempts to extract the main article text from the page's HTML.
+                    <strong>Note:</strong> This application uses a Python backend with Beautiful Soup to extract clean text content from web pages. Make sure the Python scraping service is running on localhost:5000 for URL analysis to work.
                 </p>
             </div>
           )}
