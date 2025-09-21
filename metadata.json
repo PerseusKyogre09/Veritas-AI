@@ -1,0 +1,5 @@
+{
+  "name": "Veritas AI: Misinformation Detector",
+  "description": "An AI-powered tool to help users detect potential misinformation, analyze content credibility, and learn to identify trustworthy sources. Veritas AI provides detailed explanations and fact-checking to foster a more informed digital citizenry.",
+  "requestFramePermissions": []
+}
