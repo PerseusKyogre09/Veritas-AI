@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { AnalysisResult, Source } from '../types';
 
@@ -116,5 +115,57 @@ export const analyzeContent = async (content: string): Promise<AnalysisResult> =
     } catch (error) {
         console.error("Error calling Gemini API:", error);
         throw new Error("An error occurred while analyzing the content. Please try again.");
+    }
+};
+
+export const detectLanguage = async (content: string): Promise<string> => {
+    if (!process.env.API_KEY) {
+        // MOCK IMPLEMENTATION FOR UI DEVELOPMENT
+        console.log("Using mock language detection...");
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Simple mock language detection based on common words
+        const lowerContent = content.toLowerCase();
+        if (lowerContent.includes('the ') || lowerContent.includes(' and ') || lowerContent.includes(' is ')) {
+            return 'English';
+        } else if (lowerContent.includes('el ') || lowerContent.includes(' y ') || lowerContent.includes(' es ')) {
+            return 'Spanish';
+        } else if (lowerContent.includes('le ') || lowerContent.includes(' et ') || lowerContent.includes(' est ')) {
+            return 'French';
+        } else if (lowerContent.includes('der ') || lowerContent.includes(' und ') || lowerContent.includes(' ist ')) {
+            return 'German';
+        } else if (lowerContent.includes('il ') || lowerContent.includes(' e ') || lowerContent.includes(' è ')) {
+            return 'Italian';
+        } else {
+            return 'English'; // Default fallback
+        }
+    }
+
+    // REAL GEMINI API IMPLEMENTATION
+    const model = 'gemini-2.5-flash';
+    const prompt = `
+        Detect the primary language of the following text. Respond with ONLY the language name in English (e.g., "English", "Spanish", "French", "German", "Chinese", etc.). Do not include any other text or explanation.
+        
+        Text to analyze:
+        ${content.substring(0, 1000)} // Limit to first 1000 characters for efficiency
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        });
+
+        const detectedLanguage = response.text.trim();
+        
+        // Validate that we got a reasonable language name
+        if (detectedLanguage.length > 0 && detectedLanguage.length < 50) {
+            return detectedLanguage;
+        } else {
+            return 'Unknown';
+        }
+    } catch (error) {
+        console.error("Error detecting language:", error);
+        return 'Unknown';
     }
 };

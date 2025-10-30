@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { analyzeContent } from '../services/geminiService';
+import React, { useState, useEffect, useCallback } from 'react';
+import { analyzeContent, detectLanguage } from '../services/geminiService';
 import { AnalysisResult, AnalysisHistoryItem } from '../types';
 import { AnalysisResultDisplay } from './AnalysisResultDisplay';
 import { SparklesIcon } from './icons/SparklesIcon';
@@ -11,6 +11,18 @@ interface AnalyzerProps {
 }
 
 type InputType = 'text' | 'url';
+
+// Debounce utility function
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
 
 // A simple function to strip HTML tags and extract readable text.
 // This is a basic simulation of what a tool like Python's BeautifulSoup would do on a server.
@@ -86,12 +98,44 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
+
+  // Debounced language detection
+  const debouncedLanguageDetection = useCallback(
+    debounce(async (text: string) => {
+      if (!text.trim() || text.length < 10) {
+        setDetectedLanguage(null);
+        return;
+      }
+
+      try {
+        const language = await detectLanguage(text);
+        setDetectedLanguage(language);
+      } catch (error) {
+        console.warn('Language detection failed:', error);
+        // Don't show error for language detection failures, just clear the language
+        setDetectedLanguage(null);
+      }
+    }, 1000), // 1 second debounce
+    []
+  );
+
+  // Auto-detect language when input changes
+  useEffect(() => {
+    if (inputType === 'text') {
+      debouncedLanguageDetection(inputValue);
+    } else {
+      // For URLs, clear language detection until we fetch content
+      setDetectedLanguage(null);
+    }
+  }, [inputValue, inputType, debouncedLanguageDetection]);
 
   const handleTabChange = (type: InputType) => {
     setInputType(type);
     setInputValue('');
     setError(null);
     setResult(null);
+    setDetectedLanguage(null);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -117,6 +161,12 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
             
             setLoadingMessage('Fetching content from URL...');
             contentToAnalyze = await fetchUrlContent(inputValue);
+            
+            // Detect language for URL content
+            setLoadingMessage('Detecting language...');
+            const language = await detectLanguage(contentToAnalyze);
+            setDetectedLanguage(language);
+            
              if (!contentToAnalyze.trim()) {
               throw new Error("The URL content appears to be empty or no readable text could be extracted.");
             }
@@ -154,7 +204,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
     <div className="max-w-4xl mx-auto">
       <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
         <h2 className="text-2xl font-bold text-dark dark:text-white mb-2">Content Analyzer</h2>
-        <p className="text-gray-600 dark:text-gray-300 mb-6">Paste text or a URL below. Our AI will provide a detailed credibility report.</p>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">Paste text or a URL below. Language is detected automatically, and our AI will provide a detailed credibility report.</p>
         
         <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
             <button onClick={() => handleTabChange('text')} className={tabClasses('text')}>
@@ -274,6 +324,28 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
           <AnalysisResultDisplay result={result} />
         </div>
       )}
+
+      {/* Fixed Language Detection Bar at Bottom */}
+      {(detectedLanguage || (inputValue.trim() && inputValue.length >= 10 && inputType === 'text')) && (
+        <div className="fixed bottom-0 left-0 right-0 bg-blue-600 dark:bg-blue-700 text-white p-3 shadow-lg border-t border-blue-500 dark:border-blue-600 z-50">
+          <div className="max-w-4xl mx-auto flex items-center justify-center">
+            <div className="flex items-center space-x-2">
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <span className="font-semibold">
+                {detectedLanguage ? 'Detected Language:' : 'Detecting Language...'}
+              </span>
+              {detectedLanguage && (
+                <span className="text-lg font-bold">{detectedLanguage}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add bottom padding when language bar is visible */}
+      {(detectedLanguage || (inputValue.trim() && inputValue.length >= 10 && inputType === 'text')) && <div className="h-16"></div>}
     </div>
   );
 };
