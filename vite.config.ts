@@ -15,6 +15,19 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        minify: 'esbuild',
+        rollupOptions: {
+          external: []
+        }
+      },
+      optimizeDeps: {
+        exclude: ['@rollup/rollup-win32-x64-msvc']
+      },
+      esbuild: {
+        // Use esbuild for faster builds and to avoid rollup issues
+        target: 'esnext'
       }
     };
 });
