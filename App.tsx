@@ -9,60 +9,9 @@ import { Settings } from './components/Settings';
 import { LoginModal } from './components/LoginModal';
 import { CommunityFeed } from './components/CommunityFeed';
 import { AnalysisHistoryItem, View, Theme, CommunityVoteItem, VoteDirection } from './types';
+import { recordCommunityVote, streamCommunityFeed, upsertCommunityEntry } from './services/communityService';
 
-const COMMUNITY_FEED_STORAGE_KEY = 'veritas-community-feed';
-
-const DEFAULT_COMMUNITY_FEED: CommunityVoteItem[] = [
-  {
-    id: 'sample-001',
-    headline: 'Community check: Viral coastal evacuation rumor',
-    summary:
-      'Regional emergency managers denied the claim that the governor ordered an overnight coastal evacuation. Community monitors traced the originating post to a satire page.',
-    timestamp: '2025-10-18T14:45:00.000Z',
-    credibilityScore: 58,
-    aiVerdict: 'Possibly AI-assisted',
-    supportCount: 14,
-    disputeCount: 5,
-    userVote: null,
-  },
-  {
-    id: 'sample-002',
-    headline: 'Fact-check: Celebrity endorses miracle supplement',
-    summary:
-      'Digital forensics flagged the video endorsement as a deepfake stitched from a previous interview. No reputable outlet corroborated the celebrity partnership or the supplement claims.',
-    timestamp: '2025-10-16T18:20:00.000Z',
-    credibilityScore: 32,
-    aiVerdict: 'Likely AI-generated',
-    supportCount: 21,
-    disputeCount: 3,
-    userVote: null,
-  },
-  {
-    id: 'sample-003',
-    headline: 'Local alert: Citywide water shutoff warning',
-    summary:
-      'City utilities confirmed scheduled maintenance will impact two downtown blocks for four hours. Posts predicting a citywide, day-long outage were inaccurate and removed by moderators.',
-    timestamp: '2025-10-11T09:10:00.000Z',
-    credibilityScore: 74,
-    aiVerdict: 'Likely human-authored',
-    supportCount: 9,
-    disputeCount: 2,
-    userVote: null,
-  },
-];
-
-const allowedVerdicts: Array<CommunityVoteItem['aiVerdict']> = [
-  'Likely AI-generated',
-  'Possibly AI-assisted',
-  'Likely human-authored',
-];
-
-const sanitizeVoteDirection = (value: unknown): VoteDirection | null => {
-  if (value === 'up' || value === 'down') {
-    return value;
-  }
-  return null;
-};
+const COMMUNITY_USER_STORAGE_KEY = 'veritas-community-user';
 
 const truncateSummary = (value: string, limit = 260): string => {
   const safeValue = value?.trim?.() ?? '';
@@ -73,89 +22,6 @@ const truncateSummary = (value: string, limit = 260): string => {
     return safeValue;
   }
   return `${safeValue.slice(0, limit - 3)}...`;
-};
-
-const sanitizeCommunityFeed = (raw: unknown): CommunityVoteItem[] => {
-  if (!Array.isArray(raw)) {
-    return [];
-  }
-
-  return raw.reduce<CommunityVoteItem[]>((acc, entry) => {
-    if (!entry || typeof entry !== 'object') {
-      return acc;
-    }
-
-    const id = typeof (entry as { id?: unknown }).id === 'string' ? (entry as { id: string }).id : null;
-    if (!id) {
-      return acc;
-    }
-
-    const headline = typeof (entry as { headline?: unknown }).headline === 'string'
-      ? (entry as { headline: string }).headline
-      : 'Community submission';
-
-    const summaryRaw = typeof (entry as { summary?: unknown }).summary === 'string'
-      ? (entry as { summary: string }).summary
-      : '';
-
-    const timestamp = typeof (entry as { timestamp?: unknown }).timestamp === 'string'
-      ? (entry as { timestamp: string }).timestamp
-      : new Date().toISOString();
-
-    const credibilityScoreRaw = Number((entry as { credibilityScore?: unknown }).credibilityScore);
-    const credibilityScore = Number.isFinite(credibilityScoreRaw)
-      ? Math.max(0, Math.min(100, Math.round(credibilityScoreRaw)))
-      : 0;
-
-    const aiVerdictRaw = (entry as { aiVerdict?: unknown }).aiVerdict;
-    const aiVerdict = typeof aiVerdictRaw === 'string' && allowedVerdicts.includes(aiVerdictRaw as CommunityVoteItem['aiVerdict'])
-      ? (aiVerdictRaw as CommunityVoteItem['aiVerdict'])
-      : undefined;
-
-    const supportRaw = Number((entry as { supportCount?: unknown }).supportCount);
-    const disputeRaw = Number((entry as { disputeCount?: unknown }).disputeCount);
-    const supportCount = Number.isFinite(supportRaw) ? Math.max(0, Math.round(supportRaw)) : 0;
-    const disputeCount = Number.isFinite(disputeRaw) ? Math.max(0, Math.round(disputeRaw)) : 0;
-
-    const userVote = sanitizeVoteDirection((entry as { userVote?: unknown }).userVote);
-
-    acc.push({
-      id,
-      headline,
-      summary: truncateSummary(summaryRaw),
-      timestamp,
-      credibilityScore,
-      aiVerdict,
-      supportCount,
-      disputeCount,
-      userVote,
-    });
-
-    return acc;
-  }, []);
-};
-
-const cloneDefaultCommunityFeed = (): CommunityVoteItem[] =>
-  DEFAULT_COMMUNITY_FEED.map((item) => ({ ...item }));
-
-const loadInitialCommunityFeed = (): CommunityVoteItem[] => {
-  if (typeof window === 'undefined') {
-    return cloneDefaultCommunityFeed();
-  }
-
-  try {
-    const stored = window.localStorage.getItem(COMMUNITY_FEED_STORAGE_KEY);
-    if (!stored) {
-      return cloneDefaultCommunityFeed();
-    }
-
-    const parsed = JSON.parse(stored);
-    const sanitized = sanitizeCommunityFeed(parsed);
-    return sanitized.length > 0 ? sanitized : cloneDefaultCommunityFeed();
-  } catch (error) {
-    console.warn('Failed to load community feed from storage:', error);
-    return cloneDefaultCommunityFeed();
-  }
 };
 
 const createCommunityEntryFromAnalysis = (item: AnalysisHistoryItem): CommunityVoteItem => ({
@@ -170,11 +36,32 @@ const createCommunityEntryFromAnalysis = (item: AnalysisHistoryItem): CommunityV
   userVote: null,
 });
 
+const ensureCommunityUserId = (): string => {
+  if (typeof window === 'undefined') {
+    return 'preview-user';
+  }
+
+  const existing = window.localStorage.getItem(COMMUNITY_USER_STORAGE_KEY);
+  if (existing) {
+    return existing;
+  }
+
+  const generated = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(-8)}`;
+
+  window.localStorage.setItem(COMMUNITY_USER_STORAGE_KEY, generated);
+  return generated;
+};
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.DASHBOARD);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryItem[]>([]);
-  const [communityFeed, setCommunityFeed] = useState<CommunityVoteItem[]>(() => loadInitialCommunityFeed());
+  const [communityFeed, setCommunityFeed] = useState<CommunityVoteItem[]>([]);
+  const [communityLoading, setCommunityLoading] = useState<boolean>(true);
+  const [communityError, setCommunityError] = useState<string | null>(null);
+  const [communityUserId] = useState<string>(() => ensureCommunityUserId());
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [intendedView, setIntendedView] = useState<View | null>(null); // State for post-login navigation
   const [theme, setTheme] = useState<Theme>(() => {
@@ -210,16 +97,24 @@ const App: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
+    setCommunityLoading(true);
+    const unsubscribe = streamCommunityFeed(
+      communityUserId,
+      (items) => {
+        setCommunityFeed(items);
+        setCommunityLoading(false);
+        setCommunityError(null);
+      },
+      (error) => {
+        setCommunityError(error.message);
+        setCommunityLoading(false);
+      },
+    );
 
-    try {
-      window.localStorage.setItem(COMMUNITY_FEED_STORAGE_KEY, JSON.stringify(communityFeed));
-    } catch (error) {
-      console.warn('Unable to persist community feed state:', error);
-    }
-  }, [communityFeed]);
+    return () => {
+      unsubscribe();
+    };
+  }, [communityUserId]);
 
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
@@ -238,13 +133,10 @@ const App: React.FC = () => {
 
   const addAnalysisToHistory = useCallback((item: AnalysisHistoryItem) => {
     setAnalysisHistory(prev => [item, ...prev]);
-    setCommunityFeed(prev => {
-      if (prev.some(entry => entry.id === item.id)) {
-        return prev;
-      }
-
-      const next = [createCommunityEntryFromAnalysis(item), ...prev];
-      return next.slice(0, 50);
+    const entry = createCommunityEntryFromAnalysis(item);
+    void upsertCommunityEntry(entry).catch((error) => {
+      console.error('Failed to sync community entry:', error);
+      setCommunityError('Unable to sync the latest analysis with the community feed.');
     });
   }, []);
 
@@ -255,44 +147,45 @@ const App: React.FC = () => {
       return;
     }
 
+    let voteToPersist: VoteDirection | null = null;
+
     setCommunityFeed(prev =>
       prev.map(entry => {
         if (entry.id !== entryId) {
           return entry;
         }
 
+        const currentVote = entry.userVote;
+        voteToPersist = currentVote === direction ? null : direction;
+
         let supportCount = entry.supportCount;
         let disputeCount = entry.disputeCount;
-        const currentVote = entry.userVote;
 
-        if (currentVote === direction) {
-          if (direction === 'up') {
-            supportCount = Math.max(0, supportCount - 1);
-          } else {
-            disputeCount = Math.max(0, disputeCount - 1);
-          }
-
-          return { ...entry, supportCount, disputeCount, userVote: null };
-        }
-
-        if (direction === 'up') {
-          supportCount += 1;
-          if (currentVote === 'down') {
-            disputeCount = Math.max(0, disputeCount - 1);
-          }
-
-          return { ...entry, supportCount, disputeCount, userVote: 'up' };
-        }
-
-        disputeCount += 1;
         if (currentVote === 'up') {
           supportCount = Math.max(0, supportCount - 1);
         }
 
-        return { ...entry, supportCount, disputeCount, userVote: 'down' };
+        if (currentVote === 'down') {
+          disputeCount = Math.max(0, disputeCount - 1);
+        }
+
+        if (voteToPersist === 'up') {
+          supportCount += 1;
+        }
+
+        if (voteToPersist === 'down') {
+          disputeCount += 1;
+        }
+
+        return { ...entry, supportCount, disputeCount, userVote: voteToPersist };
       })
     );
-  }, [isLoggedIn, setIntendedView, setShowLoginModal]);
+
+    void recordCommunityVote(entryId, communityUserId, voteToPersist).catch((error) => {
+      console.error('Failed to record community vote:', error);
+      setCommunityError('Unable to record your vote. Please try again.');
+    });
+  }, [communityUserId, isLoggedIn]);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
@@ -320,7 +213,8 @@ const App: React.FC = () => {
 
   const communityPendingCount = isLoggedIn
     ? communityFeed.filter(entry => entry.userVote === null).length
-    : 0;
+    : communityFeed.length;
+  const communityBadgeCount = Math.min(communityPendingCount, 99);
 
 
   const renderContent = () => {
@@ -339,6 +233,8 @@ const App: React.FC = () => {
             onNavigate={handleNavigation}
             isLoggedIn={isLoggedIn}
             onRequestLogin={() => handleShowLoginModal(View.COMMUNITY)}
+            isLoading={communityLoading}
+            errorMessage={communityError}
           />
         );
       case View.HISTORY:
@@ -367,7 +263,7 @@ const App: React.FC = () => {
           onLogout={handleLogout}
           theme={theme}
           onThemeChange={handleThemeChange}
-          communityPendingCount={communityPendingCount}
+          communityPendingCount={communityBadgeCount}
         />
         <main className="flex-grow">
           <div className="mx-auto w-full max-w-6xl px-4 pb-16 pt-12 sm:px-6 lg:px-8 lg:pt-16">

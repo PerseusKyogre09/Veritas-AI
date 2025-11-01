@@ -10,6 +10,8 @@ interface CommunityFeedProps {
   onNavigate: (view: View) => void;
   isLoggedIn: boolean;
   onRequestLogin: () => void;
+  isLoading: boolean;
+  errorMessage?: string | null;
 }
 
 const formatTimestamp = (timestamp: string): string => {
@@ -138,6 +140,8 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({
   onNavigate,
   isLoggedIn,
   onRequestLogin,
+  isLoading,
+  errorMessage,
 }) => {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -172,7 +176,26 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({
         </div>
       )}
 
-      {items.length === 0 ? (
+      {errorMessage && (
+        <div className="rounded-2xl border border-red-200/70 bg-red-50/80 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-500/40 dark:bg-red-900/40 dark:text-red-200">
+          {errorMessage}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="relative overflow-hidden rounded-3xl border border-white/40 bg-white/70 p-12 text-center shadow-xl shadow-primary/10 backdrop-blur dark:border-gray-800/60 dark:bg-gray-900/70 dark:shadow-black/30">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 dark:from-accent/10" />
+          <div className="relative space-y-4">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-accent/10 dark:text-accent">
+              <ThumbUpIcon className="h-6 w-6 animate-pulse" />
+            </div>
+            <h3 className="text-lg font-semibold text-dark dark:text-white">Loading community verdicts</h3>
+            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+              Syncing the latest fact-checks and votes from the ledger.
+            </p>
+          </div>
+        </div>
+      ) : items.length === 0 ? (
         <div className="relative overflow-hidden rounded-3xl border border-dashed border-primary/30 bg-white/70 p-12 text-center shadow-inner shadow-primary/10 backdrop-blur dark:border-accent/30 dark:bg-gray-900/60 dark:shadow-black/20">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/10 dark:from-accent/5" />
           <div className="relative space-y-4">
