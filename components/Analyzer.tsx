@@ -103,7 +103,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
   // Debounced language detection
   const debouncedLanguageDetection = useCallback(
     debounce(async (text: string) => {
-      if (!text.trim() || text.length < 10) {
+      if (!text.trim() || text.length < 3) {
         setDetectedLanguage(null);
         return;
       }
@@ -120,7 +120,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
     []
   );
 
-  // Auto-detect language when input changes
+  // Auto-detect language when input changes (even for very short phrases)
   useEffect(() => {
     if (inputType === 'text') {
       debouncedLanguageDetection(inputValue);
