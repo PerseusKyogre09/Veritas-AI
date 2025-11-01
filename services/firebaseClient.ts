@@ -4,6 +4,7 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   type Auth,
   type User,
@@ -17,6 +18,7 @@ import {
   type DocumentData,
   type Firestore,
 } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import type { UserProfile } from '../types';
 
 const firebaseConfig = {
@@ -43,12 +45,14 @@ const missingKeys = requiredKeys.filter(([, value]) => !value).map(([key]) => ke
 let firebaseApp: FirebaseApp | null = null;
 let firebaseAuth: Auth | null = null;
 let firestore: Firestore | null = null;
+let firebaseStorage: FirebaseStorage | null = null;
 
 if (missingKeys.length === 0) {
   const options = firebaseConfig as FirebaseOptions;
   firebaseApp = getApps().length === 0 ? initializeApp(options) : getApp();
   firebaseAuth = getAuth(firebaseApp);
   firestore = getFirestore(firebaseApp);
+  firebaseStorage = getStorage(firebaseApp);
 } else {
   console.warn(
     `Firebase configuration is incomplete. Missing values: ${missingKeys.join(', ')}. Authentication features will be disabled until configuration is provided.`,
@@ -58,6 +62,8 @@ if (missingKeys.length === 0) {
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
+export const googleAuthProvider = provider;
+
 const ensureFirebaseReady = (): { auth: Auth; db: Firestore } => {
   if (!firebaseAuth || !firestore) {
     throw new Error(
@@ -65,6 +71,15 @@ const ensureFirebaseReady = (): { auth: Auth; db: Firestore } => {
     );
   }
   return { auth: firebaseAuth, db: firestore };
+};
+
+export const getAuthInstance = (): Auth => ensureFirebaseReady().auth;
+export const getFirestoreInstance = (): Firestore => ensureFirebaseReady().db;
+export const getStorageInstance = (): FirebaseStorage => {
+  if (!firebaseStorage) {
+    throw new Error('Firebase Storage is not configured.');
+  }
+  return firebaseStorage;
 };
 
 const isTimestampLike = (value: unknown): value is { toDate: () => Date } => {
@@ -140,10 +155,30 @@ const upsertUserProfile = async (user: User): Promise<UserProfile> => {
   return buildUserProfile(user, updatedSnapshot.data());
 };
 
-export const signInWithGoogle = async (): Promise<UserProfile> => {
-  const { auth } = ensureFirebaseReady();
-  const result = await signInWithPopup(auth, provider);
-  return upsertUserProfile(result.user);
+export interface GoogleSignInResult {
+  profile: UserProfile;
+  accessToken: string | null;
+}
+
+const extractAccessToken = (result: Awaited<ReturnType<typeof signInWithPopup>>): string | null => {
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  return credential?.accessToken ?? null;
+};
+
+export const signInWithGoogle = async (): Promise<GoogleSignInResult> => {
+  const authInstance = getAuthInstance();
+  const signInResult = await signInWithPopup(authInstance, provider);
+  const profile = await upsertUserProfile(signInResult.user);
+
+  return {
+    profile,
+    accessToken: extractAccessToken(signInResult),
+  };
+};
+
+export const signInWithGoogleRedirect = async (): Promise<void> => {
+  const authInstance = getAuthInstance();
+  await signInWithRedirect(authInstance, provider);
 };
 
 export const signOutUser = async (): Promise<void> => {
