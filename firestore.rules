@@ -38,6 +38,9 @@ service cloud.firestore {
       );
     }
 
+    // UPDATED: Removed 'userVotes' from here.
+    // Also, 'supportCount' and 'disputeCount' should not be directly updated by clients
+    // in the main update path (they are handled by Cloud Functions).
     function isValidCommunityDoc(data) {
       return data.keys().hasOnly([
         'headline',
@@ -47,8 +50,7 @@ service cloud.firestore {
         'aiDetection',
         'timestamp',
         'supportCount',
-        'disputeCount',
-        'userVotes'
+        'disputeCount'
       ]) &&
       ('headline' in data && isShortString(data.headline, 512)) &&
       ('summary' in data && isShortString(data.summary, 5000)) &&
@@ -57,40 +59,57 @@ service cloud.firestore {
       (!('aiDetection' in data) || isValidAiDetection(data.aiDetection)) &&
       (!('timestamp' in data) || data.timestamp is timestamp) &&
       (!('supportCount' in data) || isNonNegativeInt(data.supportCount)) &&
-      (!('disputeCount' in data) || isNonNegativeInt(data.disputeCount)) &&
-      (!('userVotes' in data) || data.userVotes is map);
+      (!('disputeCount' in data) || isNonNegativeInt(data.disputeCount));
     }
 
     match /communityFeed/{entryId} {
       allow read: if isSignedIn();
 
-      allow create: if isSignedIn() && isValidCommunityDoc(request.resource.data);
+      // UPDATED: For create, ensure supportCount and disputeCount start at 0
+      allow create: if isSignedIn() &&
+                    isValidCommunityDoc(request.resource.data) &&
+                    request.resource.data.supportCount == 0 &&
+                    request.resource.data.disputeCount == 0;
 
-      allow update: if isSignedIn() && (
-        isValidCommunityDoc(request.resource.data) || // Option 1: Allows a full document update if all fields are valid
-        (
-          // Option 2: Allows specific voting-related updates
-          // Ensure that ALL keys present in the update request are from the allowed set.
-          // This allows partial updates (e.g., only 'userVotes', or 'userVotes' and 'supportCount').
-          ['supportCount', 'disputeCount', 'userVotes'].hasAll(request.resource.keys()) &&
+      // UPDATED: Now, the client cannot directly update supportCount or disputeCount.
+      // These are expected to be updated ONLY by a trusted Cloud Function.
+      // This rule allows updates to other fields (headline, summary, etc.)
+      // BUT specifically prevents client modification of supportCount and disputeCount.
+      allow update: if isSignedIn() &&
+                    isValidCommunityDoc(request.resource.data) &&
+                    // Ensure client is not attempting to change supportCount
+                    (!('supportCount' in request.resource.data) || request.resource.data.supportCount == resource.data.supportCount) &&
+                    // Ensure client is not attempting to change disputeCount
+                    (!('disputeCount' in request.resource.data) || request.resource.data.disputeCount == resource.data.disputeCount);
 
-          // Validate types for fields that ARE present in the request
-          (!('supportCount' in request.resource.data) || request.resource.data.supportCount is number) &&
-          (!('disputeCount' in request.resource.data) || request.resource.data.disputeCount is number) &&
-          (!('userVotes' in request.resource.data) || request.resource.data.userVotes is map) &&
 
-          // Apply the specific diff logic for userVotes ONLY if 'userVotes' is in the request data
-          (!('userVotes' in request.resource.data) ||
-            (
-              request.resource.data.userVotes.diff(resource.data.userVotes).addedKeys().hasOnly([request.auth.uid]) ||
-              request.resource.data.userVotes.diff(resource.data.userVotes).changedKeys().hasOnly([request.auth.uid]) ||
-              request.resource.data.userVotes.diff(resource.data.userVotes).removedKeys().hasOnly([request.auth.uid])
-            )
-          )
-        )
-      );
+      allow delete: if false; // No deletion of main community feed entries
 
-      allow delete: if false;
+      // NEW: Rules for the 'votes' subcollection
+      match /votes/{userId} {
+        // Users can read all votes for a community entry (e.g., to see who voted what)
+        allow read: if isSignedIn();
+
+        // A user can create their own vote document.
+        // userId in the path must match the authenticated user's UID.
+        allow create: if isSignedIn() &&
+                      request.auth.uid == userId && // User ID in path must match
+                      request.resource.data.keys().hasAll(['vote', 'timestamp']) &&
+                      request.resource.data.vote in ['support', 'dispute'] &&
+                      request.resource.data.timestamp is timestamp;
+
+        // A user can update their own vote document (e.g., change vote type).
+        // userId in the path must match the authenticated user's UID.
+        allow update: if isSignedIn() &&
+                      request.auth.uid == userId && // User ID in path must match
+                      request.resource.data.keys().hasAll(['vote', 'timestamp']) &&
+                      request.resource.data.vote in ['support', 'dispute'] &&
+                      request.resource.data.timestamp is timestamp;
+
+        // A user can delete their own vote document.
+        // userId in the path must match the authenticated user's UID.
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     match /users/{userId} {
