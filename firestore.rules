@@ -38,9 +38,6 @@ service cloud.firestore {
       );
     }
 
-    // UPDATED: Removed 'userVotes' from here.
-    // Also, 'supportCount' and 'disputeCount' should not be directly updated by clients
-    // in the main update path (they are handled by Cloud Functions).
     function isValidCommunityDoc(data) {
       return data.keys().hasOnly([
         'headline',
@@ -50,7 +47,8 @@ service cloud.firestore {
         'aiDetection',
         'timestamp',
         'supportCount',
-        'disputeCount'
+        'disputeCount',
+        'userVotes'
       ]) &&
       ('headline' in data && isShortString(data.headline, 512)) &&
       ('summary' in data && isShortString(data.summary, 5000)) &&
@@ -59,7 +57,8 @@ service cloud.firestore {
       (!('aiDetection' in data) || isValidAiDetection(data.aiDetection)) &&
       (!('timestamp' in data) || data.timestamp is timestamp) &&
       (!('supportCount' in data) || isNonNegativeInt(data.supportCount)) &&
-      (!('disputeCount' in data) || isNonNegativeInt(data.disputeCount));
+      (!('disputeCount' in data) || isNonNegativeInt(data.disputeCount)) &&
+      (!('userVotes' in data) || data.userVotes is map);
     }
 
     match /communityFeed/{entryId} {
@@ -72,15 +71,19 @@ service cloud.firestore {
                     request.resource.data.disputeCount == 0;
 
       // UPDATED: Now, the client cannot directly update supportCount or disputeCount.
-      // These are expected to be updated ONLY by a trusted Cloud Function.
-      // This rule allows updates to other fields (headline, summary, etc.)
-      // BUT specifically prevents client modification of supportCount and disputeCount.
-      allow update: if isSignedIn() &&
-                    isValidCommunityDoc(request.resource.data) &&
-                    // Ensure client is not attempting to change supportCount
-                    (!('supportCount' in request.resource.data) || request.resource.data.supportCount == resource.data.supportCount) &&
-                    // Ensure client is not attempting to change disputeCount
-                    (!('disputeCount' in request.resource.data) || request.resource.data.disputeCount == resource.data.disputeCount);
+      // Allow updates to vote-related fields with proper validation
+      allow update: if isSignedIn() && (
+        isValidCommunityDoc(request.resource.data) ||
+        (
+          request.resource.keys().hasOnly(['supportCount', 'disputeCount', 'userVotes']) &&
+          request.resource.data.supportCount is number &&
+          request.resource.data.disputeCount is number &&
+          request.resource.data.userVotes is map &&
+          request.resource.data.userVotes.diff(resource.data.userVotes).addedKeys().hasOnly([request.auth.uid]) &&
+          request.resource.data.userVotes.diff(resource.data.userVotes).changedKeys().hasOnly([request.auth.uid]) &&
+          request.resource.data.userVotes.diff(resource.data.userVotes).removedKeys().hasOnly([request.auth.uid])
+        )
+      );
 
 
       allow delete: if false; // No deletion of main community feed entries
