@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { AnalysisResult, Source } from '../types';
+import { AnalysisResult, Source, AIGenerationAssessment } from '../types';
 
 // Ensure the API key is available from environment variables
 if (!process.env.API_KEY) {
@@ -9,6 +9,154 @@ if (!process.env.API_KEY) {
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+
+const clampScore = (input: unknown): number => {
+    const numericValue = typeof input === 'number' ? input : Number(input);
+    if (!Number.isFinite(numericValue)) {
+        return 0;
+    }
+    return Math.max(0, Math.min(100, Math.round(numericValue)));
+};
+
+const mockAiGenerationAssessment = (content: string): AIGenerationAssessment => {
+    const wordCount = content.trim().split(/\s+/).length;
+    const citationMatches = (content.match(/https?:\/\/|\[[0-9]+\]/gi) ?? []).length;
+    const repeatedPhrases = (content.match(/(\b\w{5,}\b)(?:[^.!?]{0,40}\1){2,}/gi) ?? []).length;
+    const bulletMatches = (content.match(/\n[-*]/g) ?? []).length;
+
+    let likelihoodScore = 35;
+
+    if (repeatedPhrases > 0) {
+        likelihoodScore += Math.min(25, repeatedPhrases * 8);
+    }
+
+    if (citationMatches === 0 && wordCount > 200) {
+        likelihoodScore += 15;
+    }
+
+    if (bulletMatches > 2) {
+        likelihoodScore += 10;
+    }
+
+    if (wordCount < 120) {
+        likelihoodScore -= 10;
+    }
+
+    const normalizedScore = clampScore(likelihoodScore);
+    const confidence = clampScore(60 + (repeatedPhrases > 0 ? 15 : 0) - (citationMatches > 0 ? 10 : 0));
+
+    let verdict: AIGenerationAssessment['verdict'];
+    if (normalizedScore >= 70) {
+        verdict = 'Likely AI-generated';
+    } else if (normalizedScore >= 45) {
+        verdict = 'Possibly AI-assisted';
+    } else {
+        verdict = 'Likely human-authored';
+    }
+
+    const indicators: string[] = [];
+    if (repeatedPhrases > 0) {
+        indicators.push('Detected repeated phrases that suggest templated generation.');
+    }
+    if (citationMatches === 0 && wordCount > 200) {
+        indicators.push('Long-form passage does not reference verifiable sources.');
+    }
+    if (bulletMatches > 2) {
+        indicators.push('Multiple bullet lists with uniform phrasing detected.');
+    }
+    if (indicators.length === 0) {
+        indicators.push('No strong stylistic signals of AI generation were detected.');
+    }
+
+    return {
+        verdict,
+        likelihoodScore: normalizedScore,
+        confidence,
+        rationale: "Mock detector heuristics estimated likelihood based on repetitions, citations, and formatting cues.",
+        indicators,
+    };
+};
+
+const sanitizeIndicators = (indicators: unknown): string[] => {
+    if (!Array.isArray(indicators)) {
+        return [];
+    }
+
+    return indicators
+        .map((value) => (typeof value === 'string' ? value.trim() : ''))
+        .filter((value): value is string => value.length > 0)
+        .slice(0, 6);
+};
+
+const sanitizeAiGeneration = (raw: unknown): AIGenerationAssessment | undefined => {
+    if (!raw || typeof raw !== 'object') {
+        return undefined;
+    }
+
+    const allowedVerdicts: ReadonlyArray<AIGenerationAssessment['verdict']> = [
+        'Likely AI-generated',
+        'Possibly AI-assisted',
+        'Likely human-authored',
+    ];
+
+    const verdictCandidate = typeof (raw as { verdict?: unknown }).verdict === 'string'
+        ? (raw as { verdict: string }).verdict.trim()
+        : '';
+
+    const verdict = allowedVerdicts.includes(verdictCandidate as AIGenerationAssessment['verdict'])
+        ? (verdictCandidate as AIGenerationAssessment['verdict'])
+        : 'Likely human-authored';
+
+    const likelihoodScore = clampScore((raw as { likelihoodScore?: unknown }).likelihoodScore);
+    const confidence = clampScore((raw as { confidence?: unknown }).confidence);
+
+    const rationaleRaw = typeof (raw as { rationale?: unknown }).rationale === 'string'
+        ? (raw as { rationale: string }).rationale.trim()
+        : '';
+    const rationale = rationaleRaw.length > 0
+        ? rationaleRaw
+        : 'No explicit rationale provided by the model.';
+
+    const indicators = sanitizeIndicators((raw as { indicators?: unknown }).indicators);
+    if (indicators.length === 0) {
+        indicators.push('No strong stylistic signals of AI generation were identified.');
+    }
+
+    return { verdict, likelihoodScore, confidence, rationale, indicators };
+};
+
+const sanitizeKeyClaims = (claims: unknown): AnalysisResult['keyClaims'] => {
+    if (!Array.isArray(claims)) {
+        return [];
+    }
+
+    return claims
+        .map((claim) => {
+            if (!claim || typeof claim !== 'object') {
+                return null;
+            }
+
+            const claimText = typeof (claim as { claim?: unknown }).claim === 'string'
+                ? (claim as { claim: string }).claim.trim()
+                : '';
+            const assessmentText = typeof (claim as { assessment?: unknown }).assessment === 'string'
+                ? (claim as { assessment: string }).assessment.trim()
+                : '';
+            const isMisleading = Boolean((claim as { isMisleading?: unknown }).isMisleading);
+
+            if (!claimText || !assessmentText) {
+                return null;
+            }
+
+            return {
+                claim: claimText,
+                assessment: assessmentText,
+                isMisleading,
+            };
+        })
+        .filter((claim): claim is AnalysisResult['keyClaims'][number] => claim !== null)
+        .slice(0, 10);
+};
 
 const parseJsonResponse = (text: string): Omit<AnalysisResult, 'sources'> | null => {
     try {
@@ -51,6 +199,7 @@ export const analyzeContent = async (content: string): Promise<AnalysisResult> =
                 { claim: "Source B is quoted.", assessment: "Source B is a known biased source with a history of promoting conspiracy theories.", isMisleading: true },
                 { claim: "Statistic C is used.", assessment: "This statistic is accurate but presented out of context to support a misleading conclusion.", isMisleading: false },
             ],
+            aiGeneration: mockAiGenerationAssessment(content),
             sources: [
                 { uri: "https://www.example-fact-check.com/article1", title: "Fact Check on Claim A - Example News" },
                 { uri: "https://www.credible-source.org/research-paper", title: "Original Research Paper on Related Topic - Credible Source" },
@@ -73,10 +222,20 @@ export const analyzeContent = async (content: string): Promise<AnalysisResult> =
                     "assessment": "string (Assess the claim's validity, context, and potential for being misleading)",
                     "isMisleading": boolean (true if the claim is misleading, false otherwise)
                 }
-            ]
+            ],
+            "aiGeneration": {
+                "verdict": "Likely AI-generated",
+                "likelihoodScore": number,
+                "confidence": number,
+                "rationale": "string",
+                "indicators": ["string", ...]
+            }
         }
         Do not include any text outside of the JSON object.
         Use your search tool to verify claims against credible sources.
+        For the aiGeneration.verdict field you must choose one of: "Likely AI-generated", "Possibly AI-assisted", "Likely human-authored".
+        The aiGeneration.indicators array should list 3-6 short bullet-style explanations of the signals you observed (e.g., repetitive phrasing, lack of citations, unnatural structure).
+        Explicitly consider AI-generation signals such as perplexity, repetition, unnatural transitions, template-like structure, inconsistent voice, lack of concrete references, or suspicious citation patterns.
         
         Text to analyze:
         ---
@@ -99,6 +258,14 @@ export const analyzeContent = async (content: string): Promise<AnalysisResult> =
             throw new Error("Failed to get a valid structured response from the AI model.");
         }
 
+        const summaryRaw = typeof parsedData.summary === 'string' ? parsedData.summary.trim() : '';
+        const sanitizedResult: Omit<AnalysisResult, 'sources'> = {
+            credibilityScore: clampScore(parsedData.credibilityScore),
+            summary: summaryRaw.length > 0 ? summaryRaw : 'No summary provided by the model.',
+            keyClaims: sanitizeKeyClaims(parsedData.keyClaims),
+            aiGeneration: sanitizeAiGeneration(parsedData.aiGeneration),
+        };
+
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
         // FIX: Replaced the generic type argument on `reduce` with a typed initial value to resolve the "Untyped function calls may not accept type arguments" TypeScript error.
         const sources: Source[] = groundingChunks
@@ -111,7 +278,7 @@ export const analyzeContent = async (content: string): Promise<AnalysisResult> =
                 return acc;
             }, [] as Source[]);
 
-        return { ...parsedData, sources };
+        return { ...sanitizedResult, sources };
     } catch (error) {
         console.error("Error calling Gemini API:", error);
         throw new Error("An error occurred while analyzing the content. Please try again.");

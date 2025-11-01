@@ -24,10 +24,19 @@ export interface KeyClaim {
     isMisleading: boolean;
 }
 
+export interface AIGenerationAssessment {
+    verdict: 'Likely AI-generated' | 'Possibly AI-assisted' | 'Likely human-authored';
+    likelihoodScore: number;
+    confidence: number;
+    rationale: string;
+    indicators: string[];
+}
+
 export interface AnalysisResult {
     credibilityScore: number;
     summary: string;
     keyClaims: KeyClaim[];
+    aiGeneration?: AIGenerationAssessment;
     sources: Source[];
 }
 

@@ -33,7 +33,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                         Combat misinformation with AI-guided clarity
                     </h1>
                     <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300">
-                        Veritas AI distills complex narratives into trusted insight. Verify content, unpack manipulative framing, and strengthen your digital literacy—all in a single, elegant workspace.
+                        Veritas AI distills complex narratives into trusted insight. Verify content, flag AI-authored passages, unpack manipulative framing, and strengthen your digital literacy—all in a single, elegant workspace.
                     </p>
                     <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
                         <button
@@ -66,12 +66,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                     <FeatureCard
                         icon={<MagnifyingGlassIcon className="h-6 w-6" />}
                         title="Analyze content"
-                        description="Paste any snippet or link. Our models assess tone, rhetoric, and fact patterns to uncover misinformation markers."
+                        description="Paste any snippet or link. Our models assess tone, rhetoric, authorship signals, and fact patterns to uncover misinformation markers."
                     />
                     <FeatureCard
                         icon={<LightBulbIcon className="h-6 w-6" />}
                         title="Understand AI insight"
-                        description="Receive precise scoring, claim-level commentary, and transparent reasoning to ground your next move."
+                        description="Receive credibility scoring, AI-authorship verdicts, claim-level commentary, and transparent reasoning to ground your next move."
                     />
                     <FeatureCard
                         icon={<BookOpenIcon className="h-6 w-6" />}

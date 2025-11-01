@@ -1,5 +1,5 @@
 import React from 'react';
-import { AnalysisResult } from '../types';
+import { AnalysisResult, AIGenerationAssessment } from '../types';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { XCircleIcon } from './icons/XCircleIcon';
 import { LinkIcon } from './icons/LinkIcon';
@@ -123,6 +123,33 @@ const ScoreCircle: React.FC<{ score: number }> = ({ score }) => {
   );
 };
 
+const getAiVerdictPalette = (aiGeneration: AIGenerationAssessment) => {
+  switch (aiGeneration.verdict) {
+    case 'Likely AI-generated':
+      return {
+        border: 'border-danger/40 dark:border-danger/30',
+        text: 'text-danger',
+        accent: 'bg-danger/10',
+        badge: 'bg-danger/15 text-danger border-danger/40',
+      };
+    case 'Possibly AI-assisted':
+      return {
+        border: 'border-warning/40 dark:border-warning/30',
+        text: 'text-warning',
+        accent: 'bg-warning/10',
+        badge: 'bg-warning/15 text-warning border-warning/40',
+      };
+    case 'Likely human-authored':
+    default:
+      return {
+        border: 'border-success/40 dark:border-success/30',
+        text: 'text-success',
+        accent: 'bg-success/10',
+        badge: 'bg-success/15 text-success border-success/40',
+      };
+  }
+};
+
 export const AnalysisResultDisplay: React.FC<AnalysisResultDisplayProps> = ({ result }) => {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/40 bg-white/70 p-8 shadow-2xl shadow-primary/10 backdrop-blur-md transition-colors duration-200 dark:border-gray-800/60 dark:bg-gray-900/70 dark:shadow-black/40 sm:p-10">
@@ -142,6 +169,56 @@ export const AnalysisResultDisplay: React.FC<AnalysisResultDisplayProps> = ({ re
             </p>
           </div>
         </div>
+
+        {result.aiGeneration && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-lg font-semibold text-dark dark:text-white">AI generation detection</h4>
+              <span className="text-xs uppercase tracking-[0.35em] text-gray-400 dark:text-gray-500">Authorship signal</span>
+            </div>
+            {(() => {
+              const palette = getAiVerdictPalette(result.aiGeneration!);
+              return (
+                <div className={`rounded-2xl border ${palette.border} bg-white/80 p-6 shadow-sm shadow-primary/5 dark:bg-gray-900/70`}>
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="space-y-2">
+                      <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] ${palette.badge}`}>
+                        {result.aiGeneration.verdict}
+                      </span>
+                      <p className={`text-sm font-medium ${palette.text}`}>
+                        {result.aiGeneration.rationale}
+                      </p>
+                    </div>
+                    <div className="min-w-[220px] space-y-2">
+                      <div className="flex items-center justify-between text-xs font-semibold text-gray-500 dark:text-gray-400">
+                        <span>Likelihood</span>
+                        <span>{result.aiGeneration.likelihoodScore}%</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200/70 dark:bg-gray-800">
+                        <div
+                          className={`${palette.text.replace('text-', 'bg-')} h-full rounded-full transition-all duration-500`}
+                          style={{ width: `${result.aiGeneration.likelihoodScore}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Confidence: {result.aiGeneration.confidence}%
+                      </p>
+                    </div>
+                  </div>
+                  {result.aiGeneration.indicators.length > 0 && (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      {result.aiGeneration.indicators.map((indicator, index) => (
+                        <div key={index} className={`rounded-xl ${palette.accent} p-3 text-sm text-gray-700 dark:text-gray-300`}>
+                          {indicator}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         <div className="space-y-6">
           <div className="space-y-4">
