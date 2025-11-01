@@ -2,6 +2,7 @@
 export enum View {
     DASHBOARD = 'DASHBOARD',
     ANALYZER = 'ANALYZER',
+    COMMUNITY = 'COMMUNITY',
     PROFILE = 'PROFILE',
     HISTORY = 'HISTORY',
     SETTINGS = 'SETTINGS',
@@ -42,12 +43,26 @@ export interface CommunityLedgerEntry {
 
 export type CommunityLedgerMap = Record<string, CommunityLedgerEntry>;
 
+export type VoteDirection = 'up' | 'down';
+
 export interface AIGenerationAssessment {
     verdict: 'Likely AI-generated' | 'Possibly AI-assisted' | 'Likely human-authored';
     likelihoodScore: number;
     confidence: number;
     rationale: string;
     indicators: string[];
+}
+
+export interface CommunityVoteItem {
+    id: string;
+    headline: string;
+    summary: string;
+    timestamp: string;
+    credibilityScore: number;
+    aiVerdict?: AIGenerationAssessment['verdict'];
+    supportCount: number;
+    disputeCount: number;
+    userVote: VoteDirection | null;
 }
 
 export interface AnalysisResult {

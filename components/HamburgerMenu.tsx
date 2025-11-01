@@ -8,14 +8,16 @@ import { ClockIcon } from './icons/ClockIcon';
 import { UserCircleIcon } from './icons/UserCircleIcon';
 import { Cog6ToothIcon } from './icons/Cog6ToothIcon';
 import { ArrowLeftOnRectangleIcon } from './icons/ArrowLeftOnRectangleIcon';
+import { BellAlertIcon } from './icons/BellAlertIcon';
 
 interface HamburgerMenuProps {
   onNavigate: (view: View) => void;
   isLoggedIn: boolean;
   onLogout: () => void;
+    communityPendingCount: number;
 }
 
-export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLoggedIn, onLogout }) => {
+export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLoggedIn, onLogout, communityPendingCount }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -41,6 +43,7 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLogg
     
     const menuItems = [
         { label: 'Home', view: View.DASHBOARD, icon: <HomeIcon className="h-6 w-6 mr-3" /> },
+        { label: 'Community feed', view: View.COMMUNITY, icon: <BellAlertIcon className="h-6 w-6 mr-3" />, badge: communityPendingCount },
         { label: 'History', view: View.HISTORY, icon: <ClockIcon className="h-6 w-6 mr-3" /> },
         { label: 'Profile', view: View.PROFILE, icon: <UserCircleIcon className="h-6 w-6 mr-3" /> },
         { label: 'Settings', view: View.SETTINGS, icon: <Cog6ToothIcon className="h-6 w-6 mr-3" /> },
@@ -79,7 +82,12 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLogg
                                     <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary transition duration-150 group-hover:bg-primary group-hover:text-white dark:bg-accent/10 dark:text-accent dark:group-hover:bg-accent dark:group-hover:text-gray-900">
                                         {item.icon}
                                     </span>
-                                    {item.label}
+                                    <span className="flex-1 text-left">{item.label}</span>
+                                    {item.badge ? (
+                                        <span className="inline-flex min-h-[1.5rem] min-w-[1.5rem] items-center justify-center rounded-full bg-primary/90 text-xs font-bold text-white dark:bg-accent/90">
+                                            {item.badge}
+                                        </span>
+                                    ) : null}
                                 </button>
                             </li>
                         ))}
