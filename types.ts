@@ -13,6 +13,15 @@ export enum Theme {
     SYSTEM = 'system',
 }
 
+export interface UserProfile {
+    uid: string;
+    displayName: string | null;
+    email: string | null;
+    photoURL: string | null;
+    createdAt?: string;
+    lastLoginAt?: string;
+}
+
 export interface Source {
     uri: string;
     title: string;

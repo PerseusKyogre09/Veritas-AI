@@ -7,14 +7,18 @@ import { History } from './components/History';
 import { Profile } from './components/Profile';
 import { Settings } from './components/Settings';
 import { LoginModal } from './components/LoginModal';
-import { AnalysisHistoryItem, View, Theme } from './types';
+import { AnalysisHistoryItem, View, Theme, UserProfile } from './types';
+import { isFirebaseConfigured, listenToUserProfileChanges, signInWithGoogle, signOutUser } from './services/firebaseClient';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.DASHBOARD);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryItem[]>([]);
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [intendedView, setIntendedView] = useState<View | null>(null); // State for post-login navigation
+  const [authInitializing, setAuthInitializing] = useState<boolean>(true);
+  const [authenticating, setAuthenticating] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(() => {
     const storedTheme = localStorage.getItem('theme');
     if (storedTheme && Object.values(Theme).includes(storedTheme as Theme)) {
@@ -22,6 +26,9 @@ const App: React.FC = () => {
     }
     return Theme.SYSTEM;
   });
+
+  const isLoggedIn = Boolean(user);
+  const firebaseReady = isFirebaseConfigured();
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -47,6 +54,31 @@ const App: React.FC = () => {
     return () => mediaQuery.removeEventListener('change', mediaQueryListener);
   }, [theme]);
 
+  useEffect(() => {
+    let isMounted = true;
+    const unsubscribe = listenToUserProfileChanges((profile) => {
+      if (!isMounted) {
+        return;
+      }
+      setUser(profile);
+      setAuthInitializing(false);
+      if (!profile) {
+        setIntendedView(null);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn && [View.PROFILE, View.HISTORY, View.SETTINGS].includes(currentView)) {
+      setCurrentView(View.DASHBOARD);
+    }
+  }, [isLoggedIn, currentView]);
+
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
@@ -66,29 +98,81 @@ const App: React.FC = () => {
     setAnalysisHistory(prev => [item, ...prev]);
   }, []);
 
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-    setShowLoginModal(false);
-    // After login, navigate to the last intended view, or the dashboard as a default.
-    setCurrentView(intendedView || View.DASHBOARD);
-    setIntendedView(null);
+  const resolveAuthErrorMessage = (error: unknown): string => {
+    const errorCode = typeof error === 'object' && error !== null && 'code' in error
+      ? String((error as { code: unknown }).code)
+      : null;
+
+    switch (errorCode) {
+      case 'auth/popup-closed-by-user':
+        return 'The sign-in popup was closed before completing authentication.';
+      case 'auth/popup-blocked':
+        return 'Your browser blocked the sign-in popup. Please allow popups for this site and try again.';
+      case 'auth/cancelled-popup-request':
+        return 'Another sign-in request is already in progress.';
+      case 'auth/network-request-failed':
+        return 'The network connection was interrupted during sign-in. Check your connection and retry.';
+      default:
+        break;
+    }
+
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+    return 'We could not complete the sign-in request. Please try again.';
   };
-  
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setCurrentView(View.DASHBOARD);
+
+  const handleLogin = async () => {
+    if (!firebaseReady) {
+      setAuthError('Sign-in is unavailable because Firebase is not configured.');
+      return;
+    }
+
+    setAuthError(null);
+    setAuthenticating(true);
+    try {
+      await signInWithGoogle();
+      setShowLoginModal(false);
+      setCurrentView(intendedView || View.DASHBOARD);
+      setIntendedView(null);
+    } catch (error) {
+      const message = resolveAuthErrorMessage(error);
+      setAuthError(message);
+    } finally {
+      setAuthenticating(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setAuthError(null);
     setIntendedView(null);
+    setCurrentView(View.DASHBOARD);
+
+    if (!firebaseReady) {
+      setUser(null);
+      return;
+    }
+
+    try {
+      await signOutUser();
+    } catch (error) {
+      console.error('Failed to sign the user out of Firebase.', error);
+    }
   };
 
   const handleShowLoginModal = () => {
-      setIntendedView(null); // Clear any previously intended view
-      setShowLoginModal(true);
-  }
+    setAuthError(firebaseReady ? null : 'Sign-in is unavailable because Firebase is not configured.');
+    setAuthenticating(false);
+    setIntendedView(null); // Clear any previously intended view
+    setShowLoginModal(true);
+  };
 
   const handleCloseLoginModal = () => {
-      setShowLoginModal(false);
-      setIntendedView(null);
-  }
+    setShowLoginModal(false);
+    setIntendedView(null);
+    setAuthError(null);
+    setAuthenticating(false);
+  };
 
 
   const renderContent = () => {
@@ -102,7 +186,7 @@ const App: React.FC = () => {
       case View.HISTORY:
         return <History history={analysisHistory} onNavigate={handleNavigation} />;
       case View.PROFILE:
-        return <Profile onNavigate={handleNavigation} />;
+        return <Profile onNavigate={handleNavigation} user={user} />;
       case View.SETTINGS:
         return <Settings theme={theme} onThemeChange={handleThemeChange} />;
       case View.DASHBOARD:
@@ -121,6 +205,7 @@ const App: React.FC = () => {
         <Header 
           onNavigate={handleNavigation}
           isLoggedIn={isLoggedIn}
+          user={user}
           onLogin={handleShowLoginModal}
           onLogout={handleLogout}
           theme={theme}
@@ -140,6 +225,8 @@ const App: React.FC = () => {
         <LoginModal 
           onClose={handleCloseLoginModal}
           onLogin={handleLogin}
+          isLoading={authenticating || authInitializing}
+          error={authError}
         />
       )}
     </div>

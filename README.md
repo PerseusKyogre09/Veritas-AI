@@ -133,7 +133,23 @@ Create `.env.local`:
 
 ```bash
 GEMINI_API_KEY=your_api_key_here
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_MEASUREMENT_ID=optional_measurement_id
 ```
+
+### Firebase Authentication & Firestore
+
+1. Create a Firebase project (or reuse an existing one) from the [Firebase console](https://console.firebase.google.com/).
+2. Register a new **Web App** and copy the config values into `.env.local` using the variables above.
+3. In **Build → Authentication**, enable the **Google** sign-in provider and add your local development domain (e.g. `http://localhost:5173`) to the authorized domains list.
+4. In **Build → Firestore Database**, create a database in production mode. The app stores basic user profiles in the `users` collection.
+5. If you plan to use Firebase Analytics, copy the Measurement ID (`G-XXXXXXX`) into `VITE_FIREBASE_MEASUREMENT_ID`.
+6. Restart the Vite dev server after updating environment variables.
 
 ### Python Dependencies (`requirements.txt`)
 

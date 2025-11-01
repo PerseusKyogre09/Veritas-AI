@@ -12,7 +12,7 @@ import { ArrowLeftOnRectangleIcon } from './icons/ArrowLeftOnRectangleIcon';
 interface HamburgerMenuProps {
   onNavigate: (view: View) => void;
   isLoggedIn: boolean;
-  onLogout: () => void;
+    onLogout: () => void | Promise<void>;
 }
 
 export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLoggedIn, onLogout }) => {
@@ -34,9 +34,12 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLogg
         setIsOpen(false);
     };
 
-    const handleLogoutClick = () => {
-        onLogout();
-        setIsOpen(false);
+    const handleLogoutClick = async () => {
+        try {
+            await onLogout();
+        } finally {
+            setIsOpen(false);
+        }
     }
     
     const menuItems = [

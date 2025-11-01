@@ -3,10 +3,12 @@ import { ShieldCheckIcon } from './icons/ShieldCheckIcon';
 
 interface LoginModalProps {
   onClose: () => void;
-  onLogin: () => void;
+  onLogin: () => void | Promise<void>;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin }) => {
+export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin, isLoading = false, error = null }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70 p-6 backdrop-blur">
       <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/30 bg-white/80 p-8 text-center shadow-2xl shadow-primary/20 backdrop-blur-lg transition-colors duration-200 dark:border-gray-800/50 dark:bg-gray-900/80 dark:shadow-black/40">
@@ -29,16 +31,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin }) => {
               Save reports, sync history across devices, and unlock personalized literacy insights.
             </p>
           </div>
+          {error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-900/60 dark:bg-red-900/40 dark:text-red-200">
+              {error}
+            </div>
+          )}
           <div className="space-y-3">
             <button
-              onClick={onLogin}
-              className="w-full rounded-full bg-gradient-to-r from-primary via-accent to-secondary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition-transform duration-200 hover:-translate-y-[2px] hover:shadow-2xl"
+              onClick={() => { void onLogin(); }}
+              disabled={isLoading}
+              className="w-full rounded-full bg-gradient-to-r from-primary via-accent to-secondary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition-transform duration-200 hover:-translate-y-[2px] hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-70"
+              aria-busy={isLoading}
             >
-              Log in / Sign up
+              {isLoading ? 'Connecting…' : 'Log in / Sign up'}
             </button>
             <button
               onClick={onClose}
-              className="w-full rounded-full border border-primary/20 bg-white/70 px-6 py-3 text-sm font-semibold text-primary transition-colors duration-200 hover:border-primary hover:text-primary dark:border-accent/30 dark:bg-gray-900/70 dark:text-accent"
+              disabled={isLoading}
+              className="w-full rounded-full border border-primary/20 bg-white/70 px-6 py-3 text-sm font-semibold text-primary transition-colors duration-200 hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-70 dark:border-accent/30 dark:bg-gray-900/70 dark:text-accent"
             >
               Maybe later
             </button>
