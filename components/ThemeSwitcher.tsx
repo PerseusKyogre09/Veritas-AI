@@ -35,13 +35,13 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ theme, onThemeChan
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-light dark:focus:ring-offset-gray-800 focus:ring-accent"
+        className="rounded-full border border-white/40 bg-white/70 p-2 text-primary shadow-sm shadow-primary/10 transition duration-150 hover:bg-white/90 dark:border-gray-700/60 dark:bg-gray-900/70 dark:text-accent"
         aria-label="Toggle theme"
       >
         {currentThemeOption.icon}
       </button>
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 z-10">
+        <div className="absolute right-0 z-10 mt-3 w-44 overflow-hidden rounded-2xl border border-white/40 bg-white/90 py-2 text-sm shadow-xl shadow-primary/10 backdrop-blur dark:border-gray-800/60 dark:bg-gray-900/90 dark:shadow-black/30">
           {themeOptions.map(option => (
             <button
               key={option.value}
@@ -49,11 +49,11 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ theme, onThemeChan
                 onThemeChange(option.value);
                 setIsOpen(false);
               }}
-              className={`w-full text-left flex items-center px-4 py-2 text-sm ${
+              className={`flex w-full items-center gap-3 px-4 py-2 transition duration-150 ${
                 theme === option.value
-                  ? 'bg-gray-100 dark:bg-gray-700 text-dark dark:text-light'
-                  : 'text-gray-700 dark:text-gray-300'
-              } hover:bg-gray-100 dark:hover:bg-gray-700`}
+                  ? 'text-primary dark:text-accent'
+                  : 'text-gray-600 dark:text-gray-300'
+              } hover:bg-white/70 hover:text-primary dark:hover:bg-gray-800/80 dark:hover:text-accent`}
             >
               <span className="mr-3">{option.icon}</span>
               {option.label}

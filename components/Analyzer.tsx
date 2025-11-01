@@ -194,158 +194,155 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
   
   const isLoading = !!loadingMessage;
 
-  const tabClasses = (type: InputType) => `px-4 py-2 font-semibold border-b-2 transition-colors duration-200 ${
+  const tabClasses = (type: InputType) => `relative flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${
     inputType === type
-    ? 'border-primary dark:border-accent text-primary dark:text-accent'
-    : 'border-transparent text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-gray-200'
+    ? 'bg-gradient-to-r from-primary via-accent to-secondary text-white shadow-md shadow-primary/25'
+    : 'text-gray-600 dark:text-gray-300 hover:bg-white/70 hover:text-primary dark:hover:bg-gray-800/70 dark:hover:text-accent'
   }`;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
-        <h2 className="text-2xl font-bold text-dark dark:text-white mb-2">Content Analyzer</h2>
-        <p className="text-gray-600 dark:text-gray-300 mb-6">Paste text or a URL below. Language is detected automatically, and our AI will provide a detailed credibility report.</p>
-        
-        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+    <div className="mx-auto max-w-4xl space-y-8">
+      <div className="relative overflow-hidden rounded-3xl border border-white/40 bg-white/70 p-8 shadow-xl shadow-primary/10 backdrop-blur-md transition-colors duration-200 dark:border-gray-800/60 dark:bg-gray-900/70 dark:shadow-black/30 sm:p-10">
+        <div className="pointer-events-none absolute inset-x-0 -top-40 mx-auto h-72 w-72 rounded-full bg-primary/15 blur-3xl dark:bg-accent/25" />
+        <div className="pointer-events-none absolute -bottom-20 left-16 h-32 w-32 rounded-full bg-secondary/15 blur-2xl dark:bg-secondary/25" />
+        <div className="relative space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-semibold tracking-tight text-dark dark:text-white">Content Analyzer</h2>
+            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+              Paste text or drop in a URL. We auto-detect language, cleanse the content, and surface a transparent credibility breakdown.
+            </p>
+          </div>
+
+          <div className="relative grid grid-cols-2 gap-1 rounded-full border border-primary/15 bg-white/70 p-1 text-center dark:border-accent/30 dark:bg-gray-900/70">
             <button onClick={() => handleTabChange('text')} className={tabClasses('text')}>
-                Analyze Text
+              Analyze text
             </button>
             <button onClick={() => handleTabChange('url')} className={tabClasses('url')}>
-                Analyze URL
-            </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          {inputType === 'text' ? (
-             <div className="relative w-full">
-                <textarea
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="Paste an article, social media post, or any text here..."
-                    className="w-full h-40 p-4 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent transition-shadow duration-200 resize-y bg-light dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-accent dark:focus:border-accent"
-                    disabled={isLoading}
-                />
-                {inputValue && !isLoading && (
-                    <button
-                        type="button"
-                        onClick={() => setInputValue('')}
-                        className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                        aria-label="Clear input"
-                    >
-                        <XCircleIcon className="h-6 w-6" />
-                    </button>
-                )}
-             </div>
-          ) : (
-            <div>
-                <div className="relative w-full">
-                    <input
-                        type="url"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="https://example.com/news-article"
-                        className="w-full p-4 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent transition-shadow duration-200 bg-light dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-accent dark:focus:border-accent"
-                        disabled={isLoading}
-                    />
-                     {inputValue && !isLoading && (
-                        <button
-                            type="button"
-                            onClick={() => setInputValue('')}
-                            className="absolute top-1/2 -translate-y-1/2 right-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                            aria-label="Clear input"
-                        >
-                            <XCircleIcon className="h-6 w-6" />
-                        </button>
-                    )}
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 px-1">
-                    <strong>Note:</strong> This application uses a Python backend with Beautiful Soup to extract clean text content from web pages. Make sure the Python scraping service is running on localhost:5000 for URL analysis to work.
-                </p>
-            </div>
-          )}
-         
-          <div className="mt-4 flex justify-end">
-            <button
-              type="submit"
-              disabled={isLoading || !inputValue.trim()}
-              className="flex items-center justify-center bg-accent text-white font-bold py-2 px-6 rounded-lg hover:bg-primary disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-300 min-w-[140px]"
-            >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>{loadingMessage}...</span>
-                </>
-              ) : (
-                <>
-                  <SparklesIcon className="h-5 w-5 mr-2" />
-                  Analyze
-                </>
-              )}
+              Analyze URL
             </button>
           </div>
-        </form>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {inputType === 'text' ? (
+              <div className="relative">
+                <textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Paste an article, post, or transcript here..."
+                  className="min-h-[180px] w-full resize-y rounded-2xl border border-white/40 bg-white/90 p-5 pr-12 text-sm leading-6 text-gray-800 shadow-inner shadow-primary/10 transition duration-200 placeholder:text-gray-400 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700/80 dark:bg-gray-900/80 dark:text-gray-100 dark:shadow-black/20 dark:placeholder:text-gray-500 dark:focus:border-accent/60 dark:focus:ring-accent/30"
+                  disabled={isLoading}
+                />
+                {inputValue && !isLoading && (
+                  <button
+                    type="button"
+                    onClick={() => setInputValue('')}
+                    className="absolute right-4 top-4 text-gray-400 transition-colors duration-150 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                    aria-label="Clear input"
+                  >
+                    <XCircleIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="https://example.com/investigative-article"
+                    className="w-full rounded-2xl border border-white/40 bg-white/90 p-5 pr-12 text-sm text-gray-800 shadow-inner shadow-primary/10 transition duration-200 placeholder:text-gray-400 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700/80 dark:bg-gray-900/80 dark:text-gray-100 dark:shadow-black/20 dark:placeholder:text-gray-500 dark:focus:border-accent/60 dark:focus:ring-accent/30"
+                    disabled={isLoading}
+                  />
+                  {inputValue && !isLoading && (
+                    <button
+                      type="button"
+                      onClick={() => setInputValue('')}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-150 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                      aria-label="Clear input"
+                    >
+                      <XCircleIcon className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+                <p className="rounded-2xl border border-dashed border-primary/30 bg-white/70 px-4 py-3 text-xs leading-5 text-gray-500 backdrop-blur-sm dark:border-accent/30 dark:bg-gray-900/60 dark:text-gray-400">
+                  <strong className="font-semibold text-primary dark:text-accent">Heads up:</strong> our Python microservice extracts readable content for deeper analysis. Confirm the scraper is running locally on <code className="rounded bg-black/10 px-1 py-0.5 text-[10px] tracking-wide">http://localhost:5000</code> when testing URLs.
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {detectedLanguage && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 font-medium text-primary dark:border-accent/30 dark:bg-accent/10 dark:text-accent">
+                    <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <path fillRule="evenodd" d="M4.5 3A1.5 1.5 0 003 4.5v11A1.5 1.5 0 004.5 17h4a.5.5 0 00.4-.2l1.7-2.4h4.9a1.5 1.5 0 001.5-1.5v-7A1.5 1.5 0 0015.5 4h-5l-1.7-1.4A.5.5 0 008.4 2h-3.9z" clipRule="evenodd" />
+                    </svg>
+                    {detectedLanguage}
+                  </span>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={isLoading || !inputValue.trim()}
+                className="inline-flex min-w-[160px] items-center justify-center rounded-full bg-gradient-to-r from-primary via-accent to-secondary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition-all duration-200 hover:-translate-y-[2px] hover:shadow-2xl disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="-ml-1 mr-3 h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    <span>{loadingMessage ?? 'Processing'}...</span>
+                  </>
+                ) : (
+                  <>
+                    <SparklesIcon className="mr-2 h-5 w-5" />
+                    Run credibility scan
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
 
       {isLoading && !result && (
-        <div className="mt-8 text-center">
-            <div className="animate-pulse-fast">
-              <p className="text-secondary dark:text-teal-400 font-semibold">{loadingMessage}...</p>
-              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">This may take a moment.</p>
-            </div>
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3 text-sm font-medium text-primary shadow-sm dark:border-accent/30 dark:bg-accent/10 dark:text-accent">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 opacity-75 dark:bg-accent/60" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary dark:bg-accent" />
+            </span>
+            {loadingMessage ?? 'Running multi-layer analysis'}...
+          </div>
         </div>
       )}
 
       {error && (
-        <div className="mt-8 bg-danger/10 dark:bg-danger/20 p-4 rounded-xl shadow-lg relative animate-fade-in">
-             <button
-                onClick={() => setError(null)}
-                className="absolute top-3 right-3 text-danger/60 dark:text-danger/70 hover:text-danger dark:hover:text-danger transition-colors"
-                aria-label="Dismiss error"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-            <div className="flex items-start">
-                <XCircleIcon className="h-6 w-6 text-danger dark:text-red-400 mr-3 flex-shrink-0" />
-                <div>
-                    <h4 className="font-bold text-danger dark:text-red-400">An Error Occurred</h4>
-                    <p className="text-danger/90 dark:text-red-400/90 mt-1">{error}</p>
-                </div>
-            </div>
-        </div>
-      )}
-      
-      {result && !isLoading && (
-        <div className="mt-8">
-          <AnalysisResultDisplay result={result} />
-        </div>
-      )}
-
-      {/* Fixed Language Detection Bar at Bottom */}
-      {(detectedLanguage || (inputValue.trim() && inputValue.length >= 10 && inputType === 'text')) && (
-        <div className="fixed bottom-0 left-0 right-0 bg-blue-600 dark:bg-blue-700 text-white p-3 shadow-lg border-t border-blue-500 dark:border-blue-600 z-50">
-          <div className="max-w-4xl mx-auto flex items-center justify-center">
-            <div className="flex items-center space-x-2">
-              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              <span className="font-semibold">
-                {detectedLanguage ? 'Detected Language:' : 'Detecting Language...'}
-              </span>
-              {detectedLanguage && (
-                <span className="text-lg font-bold">{detectedLanguage}</span>
-              )}
+        <div className="relative overflow-hidden rounded-2xl border border-red-200/70 bg-red-50/80 p-5 text-red-700 shadow-lg shadow-red-200/40 backdrop-blur-sm dark:border-red-500/40 dark:bg-red-900/40 dark:text-red-200">
+          <button
+            onClick={() => setError(null)}
+            className="absolute right-4 top-4 text-red-400 transition-colors duration-150 hover:text-red-600 dark:text-red-200 dark:hover:text-red-100"
+            aria-label="Dismiss error"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="flex items-start gap-3">
+            <XCircleIcon className="mt-0.5 h-6 w-6 flex-shrink-0" />
+            <div>
+              <h4 className="text-sm font-semibold">We hit a snag</h4>
+              <p className="mt-1 text-sm leading-relaxed">{error}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add bottom padding when language bar is visible */}
-      {(detectedLanguage || (inputValue.trim() && inputValue.length >= 10 && inputType === 'text')) && <div className="h-16"></div>}
+      {result && !isLoading && (
+        <AnalysisResultDisplay result={result} />
+      )}
     </div>
   );
 };

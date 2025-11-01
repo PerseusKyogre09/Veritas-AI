@@ -112,21 +112,30 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="bg-light dark:bg-gray-900 min-h-screen font-sans text-dark dark:text-gray-100 flex flex-col">
-      <Header 
-        onNavigate={handleNavigation}
-        isLoggedIn={isLoggedIn}
-        onLogin={handleShowLoginModal}
-        onLogout={handleLogout}
-        theme={theme}
-        onThemeChange={handleThemeChange}
-      />
-      <main className="flex-grow container mx-auto px-4 py-8">
-        {renderContent()}
-      </main>
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 text-center text-gray-500 dark:text-gray-400 text-sm">
-        <p>&copy; {new Date().getFullYear()} Veritas AI. Fostering a more informed digital citizenry.</p>
-      </footer>
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-light via-white to-slate-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans text-dark dark:text-gray-100 transition-colors duration-200">
+      <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[520px] w-[960px] -translate-y-1/2 rounded-full bg-primary/10 blur-3xl dark:bg-accent/20" />
+      <div className="pointer-events-none absolute -left-24 bottom-6 h-72 w-72 rounded-full bg-accent/10 blur-3xl dark:bg-primary/30" />
+      <div className="pointer-events-none absolute -right-16 top-1/3 h-64 w-64 rounded-full bg-secondary/10 blur-3xl dark:bg-secondary/20" />
+
+      <div className="relative flex min-h-screen flex-col">
+        <Header 
+          onNavigate={handleNavigation}
+          isLoggedIn={isLoggedIn}
+          onLogin={handleShowLoginModal}
+          onLogout={handleLogout}
+          theme={theme}
+          onThemeChange={handleThemeChange}
+        />
+        <main className="flex-grow">
+          <div className="mx-auto w-full max-w-6xl px-4 pb-16 pt-12 sm:px-6 lg:px-8 lg:pt-16">
+            {renderContent()}
+          </div>
+        </main>
+        <footer className="relative border-t border-white/40 bg-white/70 py-6 text-center text-sm text-gray-600 backdrop-blur dark:border-gray-800/80 dark:bg-gray-900/70 dark:text-gray-400">
+          <p>&copy; {new Date().getFullYear()} Veritas AI · Fostering a more informed digital citizenry.</p>
+        </footer>
+      </div>
+
       {showLoginModal && (
         <LoginModal 
           onClose={handleCloseLoginModal}

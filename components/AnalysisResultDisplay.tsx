@@ -9,20 +9,27 @@ interface AnalysisResultDisplayProps {
 }
 
 const ScoreCircle: React.FC<{ score: number }> = ({ score }) => {
-  const getScoreColor = () => {
-    if (score >= 75) return 'text-success';
-    if (score >= 40) return 'text-warning';
-    return 'text-danger';
+  const getPalette = () => {
+    if (score >= 75) return { ring: 'stroke-success', text: 'text-success', ringAccent: 'ring-success/30' };
+    if (score >= 40) return { ring: 'stroke-warning', text: 'text-warning', ringAccent: 'ring-warning/30' };
+    return { ring: 'stroke-danger', text: 'text-danger', ringAccent: 'ring-danger/30' };
   };
 
+  const palette = getPalette();
   const circumference = 2 * Math.PI * 45;
   const offset = circumference - (score / 100) * circumference;
 
   return (
-    <div className="relative w-40 h-40">
-      <svg className="w-full h-full" viewBox="0 0 100 100">
+    <div className={`relative flex h-44 w-44 items-center justify-center rounded-full bg-white/80 ring-2 backdrop-blur dark:bg-gray-900/70 ${palette.ringAccent}`}>
+      <svg className="h-40 w-40" viewBox="0 0 100 100">
+        <defs>
+          <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#0D47A1" />
+            <stop offset="100%" stopColor="#1976D2" />
+          </linearGradient>
+        </defs>
         <circle
-          className="text-gray-200 dark:text-gray-700"
+          className="stroke-gray-200/70 dark:stroke-gray-700"
           strokeWidth="10"
           stroke="currentColor"
           fill="transparent"
@@ -31,12 +38,12 @@ const ScoreCircle: React.FC<{ score: number }> = ({ score }) => {
           cy="50"
         />
         <circle
-          className={`${getScoreColor()} transition-all duration-1000 ease-out`}
+          className={`transition-all duration-1000 ease-out ${palette.ring}`}
           strokeWidth="10"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          stroke="currentColor"
+          stroke={score >= 75 ? 'url(#scoreGradient)' : undefined}
           fill="transparent"
           r="45"
           cx="50"
@@ -44,8 +51,9 @@ const ScoreCircle: React.FC<{ score: number }> = ({ score }) => {
           transform="rotate(-90 50 50)"
         />
       </svg>
-      <div className={`absolute inset-0 flex items-center justify-center text-4xl font-extrabold ${getScoreColor()}`}>
-        {score}
+      <div className={`absolute flex flex-col items-center text-4xl font-extrabold ${palette.text}`}>
+        <span>{score}</span>
+        <span className="mt-1 text-xs font-semibold uppercase tracking-[0.4em] text-gray-400 dark:text-gray-500">Score</span>
       </div>
     </div>
   );
@@ -53,57 +61,75 @@ const ScoreCircle: React.FC<{ score: number }> = ({ score }) => {
 
 export const AnalysisResultDisplay: React.FC<AnalysisResultDisplayProps> = ({ result }) => {
   return (
-    <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg animate-fade-in">
-      <h3 className="text-2xl font-bold text-dark dark:text-white mb-6 text-center">Analysis Report</h3>
-      <div className="grid md:grid-cols-3 gap-8 items-center mb-8">
-        <div className="flex justify-center md:col-span-1">
+    <div className="relative overflow-hidden rounded-3xl border border-white/40 bg-white/70 p-8 shadow-2xl shadow-primary/10 backdrop-blur-md transition-colors duration-200 dark:border-gray-800/60 dark:bg-gray-900/70 dark:shadow-black/40 sm:p-10">
+      <div className="pointer-events-none absolute -top-24 right-24 h-56 w-56 rounded-full bg-primary/15 blur-3xl dark:bg-accent/20" />
+      <div className="pointer-events-none absolute bottom-0 left-0 h-40 w-40 rounded-full bg-secondary/15 blur-3xl dark:bg-secondary/25" />
+
+      <div className="relative space-y-10">
+        <div className="flex flex-col items-center gap-8 text-center md:flex-row md:text-left">
           <ScoreCircle score={result.credibilityScore} />
-        </div>
-        <div className="md:col-span-2">
-            <h4 className="text-lg font-semibold text-dark dark:text-white mb-2">AI Summary</h4>
-            <p className="text-gray-700 dark:text-gray-200 bg-light dark:bg-gray-700/50 p-4 rounded-md">{result.summary}</p>
-        </div>
-      </div>
-      
-      <div className="space-y-6">
-        <div>
-            <h4 className="text-lg font-semibold text-dark dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">Key Claims Analysis</h4>
-            <ul className="space-y-4">
-            {result.keyClaims.map((item, index) => (
-                <li key={index} className="flex items-start p-4 bg-light dark:bg-gray-700/50 rounded-lg">
-                {item.isMisleading ? 
-                    <XCircleIcon className="h-6 w-6 text-danger flex-shrink-0 mr-3 mt-1" /> :
-                    <CheckCircleIcon className="h-6 w-6 text-success flex-shrink-0 mr-3 mt-1" />
-                }
-                <div>
-                    <p className="font-semibold text-dark dark:text-white">{item.claim}</p>
-                    <p className="text-gray-600 dark:text-gray-300">{item.assessment}</p>
-                </div>
-                </li>
-            ))}
-            </ul>
-        </div>
-        
-        {result.sources && result.sources.length > 0 && (
-            <div>
-                <h4 className="text-lg font-semibold text-dark dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">Verified Sources</h4>
-                <ul className="space-y-2">
-                    {result.sources.map((source, index) => (
-                    <li key={index}>
-                        <a 
-                            href={source.uri} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="flex items-center text-accent hover:text-primary dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200"
-                        >
-                            <LinkIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                            <span className="truncate">{source.title}</span>
-                        </a>
-                    </li>
-                    ))}
-                </ul>
+          <div className="space-y-4">
+            <div className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-primary dark:border-accent/30 dark:bg-accent/10 dark:text-accent">
+              Credibility overview
             </div>
-        )}
+            <h3 className="text-3xl font-bold leading-tight text-dark dark:text-white">AI summary</h3>
+            <p className="rounded-2xl border border-white/40 bg-white/80 p-5 text-base leading-relaxed text-gray-700 shadow-inner shadow-primary/5 dark:border-gray-700/70 dark:bg-gray-900/70 dark:text-gray-200">
+              {result.summary}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-lg font-semibold text-dark dark:text-white">Key claims analysis</h4>
+              <span className="text-xs uppercase tracking-[0.35em] text-gray-400 dark:text-gray-500">Evidence trail</span>
+            </div>
+            <ul className="space-y-4">
+              {result.keyClaims.map((item, index) => (
+                <li key={index} className="group relative overflow-hidden rounded-2xl border border-white/30 bg-white/70 p-5 shadow-sm shadow-primary/5 transition duration-200 hover:-translate-y-[1px] hover:shadow-lg dark:border-gray-700/60 dark:bg-gray-900/70 dark:shadow-black/20">
+                  <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary to-accent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                  <div className="relative flex items-start gap-4">
+                    {item.isMisleading ? (
+                      <XCircleIcon className="mt-0.5 h-6 w-6 text-danger" />
+                    ) : (
+                      <CheckCircleIcon className="mt-0.5 h-6 w-6 text-success" />
+                    )}
+                    <div className="space-y-2">
+                      <p className="font-semibold text-dark dark:text-white">{item.claim}</p>
+                      <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">{item.assessment}</p>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {result.sources && result.sources.length > 0 && (
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold text-dark dark:text-white">Verified sources</h4>
+              <ul className="grid gap-3 md:grid-cols-2">
+                {result.sources.map((source, index) => (
+                  <li key={index}>
+                    <a
+                      href={source.uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-2xl border border-transparent bg-white/60 px-4 py-3 text-sm font-medium text-primary transition duration-200 hover:border-primary/30 hover:bg-white/90 hover:text-primary dark:bg-gray-900/60 dark:text-accent dark:hover:border-accent/30 dark:hover:bg-gray-900/80 dark:hover:text-accent"
+                    >
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary dark:bg-accent/15 dark:text-accent">
+                        <LinkIcon className="h-4 w-4" />
+                      </span>
+                      <span className="flex-1 text-left text-sm leading-snug text-current">
+                        {source.title}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

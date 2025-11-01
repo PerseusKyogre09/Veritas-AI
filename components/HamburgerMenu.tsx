@@ -50,7 +50,7 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLogg
         <div ref={menuRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="p-2 rounded-md text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent"
+                className="rounded-full bg-white/70 p-2 text-primary shadow-sm shadow-primary/10 transition duration-150 hover:bg-white/90 hover:text-primary dark:bg-gray-900/70 dark:text-accent dark:hover:bg-gray-900"
                 aria-label="Open main menu"
                 aria-expanded={isOpen}
             >
@@ -58,38 +58,42 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLogg
             </button>
 
             {/* Overlay */}
-            <div className={`fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsOpen(false)} aria-hidden="true"></div>
+            <div className={`fixed inset-0 z-40 bg-gray-900/70 backdrop-blur transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsOpen(false)} aria-hidden="true"></div>
             
             {/* Menu Panel */}
-            <div className={`fixed top-0 left-0 h-full w-72 bg-white dark:bg-gray-800 shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} flex flex-col`}>
-                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                    <h2 className="font-bold text-lg text-primary dark:text-accent">Menu</h2>
-                    <button onClick={() => setIsOpen(false)} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close menu">
-                       <XMarkIcon className="h-6 w-6 text-gray-500 dark:text-gray-300" />
+            <div className={`fixed top-0 left-0 z-50 flex h-full w-80 transform flex-col border-r border-white/20 bg-white/70 text-dark shadow-2xl shadow-primary/20 backdrop-blur-lg transition-transform duration-300 ease-in-out dark:border-gray-800/50 dark:bg-gray-900/80 dark:text-gray-100 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="flex items-center justify-between px-5 py-4">
+                    <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-primary dark:text-accent">Navigation</h2>
+                    <button onClick={() => setIsOpen(false)} className="rounded-full bg-white/60 p-2 text-gray-500 transition duration-150 hover:text-primary dark:bg-gray-900/70 dark:text-gray-300 dark:hover:text-accent" aria-label="Close menu">
+                       <XMarkIcon className="h-5 w-5" />
                     </button>
                 </div>
-                <nav className="flex-grow flex flex-col justify-between p-4">
-                    <ul>
+                <nav className="flex grow flex-col justify-between px-4 pb-6">
+                    <ul className="space-y-1">
                         {menuItems.map(item => (
                             <li key={item.label}>
                                 <button
                                     onClick={() => handleNavigation(item.view)}
-                                    className="w-full flex items-center p-3 rounded-md text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-gray-700 transition duration-150 hover:bg-white/80 hover:text-primary dark:text-gray-200 dark:hover:bg-gray-800/80 dark:hover:text-accent"
                                 >
-                                    {item.icon}
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary transition duration-150 group-hover:bg-primary group-hover:text-white dark:bg-accent/10 dark:text-accent dark:group-hover:bg-accent dark:group-hover:text-gray-900">
+                                        {item.icon}
+                                    </span>
                                     {item.label}
                                 </button>
                             </li>
                         ))}
                     </ul>
                      {isLoggedIn && (
-                        <ul className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                        <ul className="mt-6 space-y-1 border-t border-white/30 pt-4 dark:border-gray-800/60">
                             <li>
                                  <button
                                     onClick={handleLogoutClick}
-                                    className="w-full flex items-center p-3 rounded-md text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                    className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-red-600 transition duration-150 hover:bg-red-50/80 dark:text-red-300 dark:hover:bg-red-900/40"
                                  >
-                                    <ArrowLeftOnRectangleIcon className="h-6 w-6 mr-3" />
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50 text-red-500 transition duration-150 group-hover:bg-red-500 group-hover:text-white dark:bg-red-900/30 dark:text-red-300 dark:group-hover:bg-red-500">
+                                        <ArrowLeftOnRectangleIcon className="h-6 w-6" />
+                                    </span>
                                     Log Out
                                  </button>
                             </li>
