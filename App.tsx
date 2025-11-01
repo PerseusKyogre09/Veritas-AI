@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { Analyzer } from './components/Analyzer';
@@ -7,13 +7,62 @@ import { History } from './components/History';
 import { Profile } from './components/Profile';
 import { Settings } from './components/Settings';
 import { LoginModal } from './components/LoginModal';
-import { AnalysisHistoryItem, View, Theme, UserProfile } from './types';
+import { CommunityFeed } from './components/CommunityFeed';
+import { AnalysisHistoryItem, View, Theme, UserProfile, CommunityVoteItem, VoteDirection } from './types';
 import { isFirebaseConfigured, listenToUserProfileChanges, signInWithGoogle, signOutUser } from './services/firebaseClient';
+import { recordCommunityVote, streamCommunityFeed, upsertCommunityEntry } from './services/communityService';
+
+const COMMUNITY_USER_STORAGE_KEY = 'veritas-community-user';
+
+const truncateSummary = (value: string, limit = 260): string => {
+  const safeValue = value?.trim?.() ?? '';
+  if (safeValue.length === 0) {
+    return 'No community summary available yet.';
+  }
+  if (safeValue.length <= limit) {
+    return safeValue;
+  }
+  return `${safeValue.slice(0, limit - 3)}...`;
+};
+
+const createCommunityEntryFromAnalysis = (item: AnalysisHistoryItem): CommunityVoteItem => ({
+  id: item.id,
+  headline: item.query || 'Untitled submission',
+  summary: truncateSummary(item.result.summary ?? ''),
+  timestamp: item.timestamp,
+  credibilityScore: Math.max(0, Math.min(100, Math.round(item.result.credibilityScore))),
+  aiVerdict: item.result.aiGeneration?.verdict,
+  supportCount: 0,
+  disputeCount: 0,
+  userVote: null,
+});
+
+const ensureCommunityUserId = (): string => {
+  if (typeof window === 'undefined') {
+    return 'preview-user';
+  }
+
+  const existing = window.localStorage.getItem(COMMUNITY_USER_STORAGE_KEY);
+  if (existing) {
+    return existing;
+  }
+
+  const generated = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(-8)}`;
+
+  window.localStorage.setItem(COMMUNITY_USER_STORAGE_KEY, generated);
+  return generated;
+};
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.DASHBOARD);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryItem[]>([]);
+  const [communityFeed, setCommunityFeed] = useState<CommunityVoteItem[]>([]);
+  const [communityLoading, setCommunityLoading] = useState<boolean>(true);
+  const [communityError, setCommunityError] = useState<string | null>(null);
+  const [communityUserId] = useState<string>(() => ensureCommunityUserId());
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [intendedView, setIntendedView] = useState<View | null>(null); // State for post-login navigation
   const [authInitializing, setAuthInitializing] = useState<boolean>(true);
@@ -79,6 +128,31 @@ const App: React.FC = () => {
     }
   }, [isLoggedIn, currentView]);
 
+  const effectiveCommunityUserId = useMemo(
+    () => user?.uid ?? communityUserId,
+    [user?.uid, communityUserId],
+  );
+
+  useEffect(() => {
+    setCommunityLoading(true);
+    const unsubscribe = streamCommunityFeed(
+      effectiveCommunityUserId,
+      (items) => {
+        setCommunityFeed(items);
+        setCommunityLoading(false);
+        setCommunityError(null);
+      },
+      (error) => {
+        setCommunityError(error.message);
+        setCommunityLoading(false);
+      },
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [effectiveCommunityUserId]);
+
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
@@ -96,7 +170,59 @@ const App: React.FC = () => {
 
   const addAnalysisToHistory = useCallback((item: AnalysisHistoryItem) => {
     setAnalysisHistory(prev => [item, ...prev]);
+    const entry = createCommunityEntryFromAnalysis(item);
+    void upsertCommunityEntry(entry).catch((error) => {
+      console.error('Failed to sync community entry:', error);
+      setCommunityError('Unable to sync the latest analysis with the community feed.');
+    });
   }, []);
+
+  const handleCommunityVote = useCallback((entryId: string, direction: VoteDirection) => {
+    if (!isLoggedIn) {
+      setIntendedView(View.COMMUNITY);
+      setShowLoginModal(true);
+      return;
+    }
+
+    let voteToPersist: VoteDirection | null = null;
+
+    setCommunityFeed(prev =>
+      prev.map(entry => {
+        if (entry.id !== entryId) {
+          return entry;
+        }
+
+        const currentVote = entry.userVote;
+        voteToPersist = currentVote === direction ? null : direction;
+
+        let supportCount = entry.supportCount;
+        let disputeCount = entry.disputeCount;
+
+        if (currentVote === 'up') {
+          supportCount = Math.max(0, supportCount - 1);
+        }
+
+        if (currentVote === 'down') {
+          disputeCount = Math.max(0, disputeCount - 1);
+        }
+
+        if (voteToPersist === 'up') {
+          supportCount += 1;
+        }
+
+        if (voteToPersist === 'down') {
+          disputeCount += 1;
+        }
+
+        return { ...entry, supportCount, disputeCount, userVote: voteToPersist };
+      })
+    );
+
+    void recordCommunityVote(entryId, effectiveCommunityUserId, voteToPersist).catch((error) => {
+      console.error('Failed to record community vote:', error);
+      setCommunityError('Unable to record your vote. Please try again.');
+    });
+  }, [effectiveCommunityUserId, isLoggedIn]);
 
   const resolveAuthErrorMessage = (error: unknown): string => {
     const errorCode = typeof error === 'object' && error !== null && 'code' in error
@@ -160,10 +286,10 @@ const App: React.FC = () => {
     }
   };
 
-  const handleShowLoginModal = () => {
+  const handleShowLoginModal = (targetView: View | null = null) => {
     setAuthError(firebaseReady ? null : 'Sign-in is unavailable because Firebase is not configured.');
     setAuthenticating(false);
-    setIntendedView(null); // Clear any previously intended view
+    setIntendedView(targetView);
     setShowLoginModal(true);
   };
 
@@ -174,6 +300,11 @@ const App: React.FC = () => {
     setAuthenticating(false);
   };
 
+  const communityPendingCount = isLoggedIn
+    ? communityFeed.filter(entry => entry.userVote === null).length
+    : communityFeed.length;
+  const communityBadgeCount = Math.min(communityPendingCount, 99);
+
 
   const renderContent = () => {
     switch (currentView) {
@@ -181,6 +312,18 @@ const App: React.FC = () => {
         return (
           <Analyzer 
             onAnalysisComplete={addAnalysisToHistory}
+          />
+        );
+      case View.COMMUNITY:
+        return (
+          <CommunityFeed
+            items={communityFeed}
+            onVote={handleCommunityVote}
+            onNavigate={handleNavigation}
+            isLoggedIn={isLoggedIn}
+            onRequestLogin={() => handleShowLoginModal(View.COMMUNITY)}
+            isLoading={communityLoading}
+            errorMessage={communityError}
           />
         );
       case View.HISTORY:
@@ -206,10 +349,11 @@ const App: React.FC = () => {
           onNavigate={handleNavigation}
           isLoggedIn={isLoggedIn}
           user={user}
-          onLogin={handleShowLoginModal}
+    onLogin={() => handleShowLoginModal()}
           onLogout={handleLogout}
           theme={theme}
           onThemeChange={handleThemeChange}
+          communityPendingCount={communityBadgeCount}
         />
         <main className="flex-grow">
           <div className="mx-auto w-full max-w-6xl px-4 pb-16 pt-12 sm:px-6 lg:px-8 lg:pt-16">

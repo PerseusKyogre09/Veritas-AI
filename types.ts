@@ -2,6 +2,7 @@
 export enum View {
     DASHBOARD = 'DASHBOARD',
     ANALYZER = 'ANALYZER',
+    COMMUNITY = 'COMMUNITY',
     PROFILE = 'PROFILE',
     HISTORY = 'HISTORY',
     SETTINGS = 'SETTINGS',
@@ -33,12 +34,44 @@ export interface KeyClaim {
     isMisleading: boolean;
 }
 
+export interface CommunityAnnotation {
+    id: string;
+    note: string;
+    createdAt: string;
+    author?: string;
+}
+
+export interface CommunityLedgerEntry {
+    claimId: string;
+    claim: string;
+    aiAssessment: 'Misleading' | 'Credible';
+    supportCount: number;
+    disputeCount: number;
+    annotations: CommunityAnnotation[];
+}
+
+export type CommunityLedgerMap = Record<string, CommunityLedgerEntry>;
+
+export type VoteDirection = 'up' | 'down';
+
 export interface AIGenerationAssessment {
     verdict: 'Likely AI-generated' | 'Possibly AI-assisted' | 'Likely human-authored';
     likelihoodScore: number;
     confidence: number;
     rationale: string;
     indicators: string[];
+}
+
+export interface CommunityVoteItem {
+    id: string;
+    headline: string;
+    summary: string;
+    timestamp: string;
+    credibilityScore: number;
+    aiVerdict?: AIGenerationAssessment['verdict'];
+    supportCount: number;
+    disputeCount: number;
+    userVote: VoteDirection | null;
 }
 
 export interface AnalysisResult {
