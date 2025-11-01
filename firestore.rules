@@ -73,9 +73,11 @@ service cloud.firestore {
           request.resource.data.supportCount is number &&
           request.resource.data.disputeCount is number &&
           request.resource.data.userVotes is map &&
-          request.resource.data.userVotes.diff(resource.data.userVotes).addedKeys().hasOnly([request.auth.uid]) &&
-          request.resource.data.userVotes.diff(resource.data.userVotes).changedKeys().hasOnly([request.auth.uid]) &&
-          request.resource.data.userVotes.diff(resource.data.userVotes).removedKeys().hasOnly([request.auth.uid])
+          ( // <-- Add parentheses here to group the OR conditions
+            request.resource.data.userVotes.diff(resource.data.userVotes).addedKeys().hasOnly([request.auth.uid]) ||
+            request.resource.data.userVotes.diff(resource.data.userVotes).changedKeys().hasOnly([request.auth.uid]) ||
+            request.resource.data.userVotes.diff(resource.data.userVotes).removedKeys().hasOnly([request.auth.uid])
+          ) // <-- Close parentheses here
         )
       );
 
