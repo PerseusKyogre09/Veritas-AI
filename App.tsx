@@ -138,12 +138,6 @@ const App: React.FC = () => {
     }
   }, [isLoggedIn, currentView]);
 
-  useEffect(() => {
-    if (isLoggedIn && currentView === View.LANDING) {
-      setCurrentView(View.DASHBOARD);
-    }
-  }, [isLoggedIn, currentView]);
-
   const effectiveCommunityUserId = useMemo(
     () => user?.uid ?? communityUserId,
     [user?.uid, communityUserId],
@@ -276,7 +270,7 @@ const App: React.FC = () => {
     try {
       await signInWithGoogle();
       setShowLoginModal(false);
-      setCurrentView(intendedView || View.DASHBOARD);
+        setCurrentView(prev => intendedView ?? prev ?? View.DASHBOARD);
       setIntendedView(null);
     } catch (error) {
       const message = resolveAuthErrorMessage(error);
@@ -328,7 +322,7 @@ const App: React.FC = () => {
         return (
           <LandingPage
             onStartAnalyzer={() => handleNavigation(View.ANALYZER)}
-            onLogin={() => handleShowLoginModal()}
+            onLogin={() => handleShowLoginModal(View.LANDING)}
             isLoggedIn={isLoggedIn}
           />
         );
