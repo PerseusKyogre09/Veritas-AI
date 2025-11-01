@@ -178,6 +178,9 @@ export const upsertCommunityEntry = async (entry: CommunityVoteItem) => {
       aiVerdict: entry.aiVerdict ?? null,
       aiDetection: entry.aiDetection ?? null,
       timestamp: serverTimestamp(),
+      supportCount: entry.supportCount,
+      disputeCount: entry.disputeCount,
+      userVotes: {},
     },
     { merge: true },
   );
@@ -240,10 +243,13 @@ export const recordCommunityVote = async (
       Number.isFinite(data.disputeCount) ? Number(data.disputeCount) : 0,
     );
 
+    // Update the entire userVotes object
+    const updatedVotes = { ...existingVotes, [userId]: direction };
+
     transaction.update(ref, {
       supportCount: counts.supportCount,
       disputeCount: counts.disputeCount,
-      [`userVotes.${userId}`]: direction,
+      userVotes: updatedVotes,
     });
   });
 };

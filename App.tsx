@@ -229,7 +229,7 @@ const App: React.FC = () => {
 
     void recordCommunityVote(entryId, effectiveCommunityUserId, voteToPersist).catch((error) => {
       console.error('Failed to record community vote:', error);
-      setCommunityError('Unable to record your vote. Please try again.');
+      setCommunityError(`Unable to record your vote: ${error.message}`);
     });
   }, [effectiveCommunityUserId, isLoggedIn]);
 
