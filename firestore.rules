@@ -67,17 +67,26 @@ service cloud.firestore {
       allow create: if isSignedIn() && isValidCommunityDoc(request.resource.data);
 
       allow update: if isSignedIn() && (
-        isValidCommunityDoc(request.resource.data) ||
+        isValidCommunityDoc(request.resource.data) || // Option 1: Allows a full document update if all fields are valid
         (
-          request.resource.keys().hasOnly(['supportCount', 'disputeCount', 'userVotes']) &&
-          request.resource.data.supportCount is number &&
-          request.resource.data.disputeCount is number &&
-          request.resource.data.userVotes is map &&
-          ( // <-- Add parentheses here to group the OR conditions
-            request.resource.data.userVotes.diff(resource.data.userVotes).addedKeys().hasOnly([request.auth.uid]) ||
-            request.resource.data.userVotes.diff(resource.data.userVotes).changedKeys().hasOnly([request.auth.uid]) ||
-            request.resource.data.userVotes.diff(resource.data.userVotes).removedKeys().hasOnly([request.auth.uid])
-          ) // <-- Close parentheses here
+          // Option 2: Allows specific voting-related updates
+          // Ensure that ALL keys present in the update request are from the allowed set.
+          // This allows partial updates (e.g., only 'userVotes', or 'userVotes' and 'supportCount').
+          ['supportCount', 'disputeCount', 'userVotes'].hasAll(request.resource.keys()) &&
+
+          // Validate types for fields that ARE present in the request
+          (!('supportCount' in request.resource.data) || request.resource.data.supportCount is number) &&
+          (!('disputeCount' in request.resource.data) || request.resource.data.disputeCount is number) &&
+          (!('userVotes' in request.resource.data) || request.resource.data.userVotes is map) &&
+
+          // Apply the specific diff logic for userVotes ONLY if 'userVotes' is in the request data
+          (!('userVotes' in request.resource.data) ||
+            (
+              request.resource.data.userVotes.diff(resource.data.userVotes).addedKeys().hasOnly([request.auth.uid]) ||
+              request.resource.data.userVotes.diff(resource.data.userVotes).changedKeys().hasOnly([request.auth.uid]) ||
+              request.resource.data.userVotes.diff(resource.data.userVotes).removedKeys().hasOnly([request.auth.uid])
+            )
+          )
         )
       );
 
