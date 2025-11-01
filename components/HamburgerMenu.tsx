@@ -56,7 +56,7 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLogg
         <div ref={menuRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="rounded-full bg-white/70 p-2 text-primary shadow-sm shadow-primary/10 transition duration-150 hover:bg-white/90 hover:text-primary dark:bg-gray-900/70 dark:text-accent dark:hover:bg-gray-900"
+                className="rounded-md border border-white/10 bg-white/5 p-2 text-white transition hover:border-white/30 hover:text-primary"
                 aria-label="Open main menu"
                 aria-expanded={isOpen}
             >
@@ -64,19 +64,19 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLogg
             </button>
 
             <div
-                className={`fixed inset-0 z-40 bg-gray-900/70 backdrop-blur transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+                className={`fixed inset-0 z-40 bg-black/70 backdrop-blur transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
                 onClick={() => setIsOpen(false)}
                 aria-hidden="true"
             ></div>
 
             <div
-                className={`fixed top-0 left-0 z-50 flex h-full w-80 transform flex-col border-r border-white/20 bg-white/70 text-dark shadow-2xl shadow-primary/20 backdrop-blur-lg transition-transform duration-300 ease-in-out dark:border-gray-800/50 dark:bg-gray-900/80 dark:text-gray-100 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                className={`fixed top-0 left-0 z-50 flex h-full w-80 transform flex-col border-r border-white/10 bg-[#050505] text-white shadow-2xl shadow-black/60 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
                 <div className="flex items-center justify-between px-5 py-4">
-                    <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-primary dark:text-accent">Navigation</h2>
+                    <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-white/50">Navigation</h2>
                     <button
                         onClick={() => setIsOpen(false)}
-                        className="rounded-full bg-white/60 p-2 text-gray-500 transition duration-150 hover:text-primary dark:bg-gray-900/70 dark:text-gray-300 dark:hover:text-accent"
+                        className="rounded-md border border-white/10 bg-white/5 p-2 text-white/60 transition hover:border-white/30 hover:text-white"
                         aria-label="Close menu"
                     >
                         <XMarkIcon className="h-5 w-5" />
@@ -88,14 +88,14 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLogg
                             <li key={item.label}>
                                 <button
                                     onClick={() => handleNavigation(item.view)}
-                                    className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-gray-700 transition duration-150 hover:bg-white/80 hover:text-primary dark:text-gray-200 dark:hover:bg-gray-800/80 dark:hover:text-accent"
+                                    className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-white/70 transition duration-150 hover:bg-white/5 hover:text-white"
                                 >
-                                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary transition duration-150 group-hover:bg-primary group-hover:text-white dark:bg-accent/10 dark:text-accent dark:group-hover:bg-accent dark:group-hover:text-gray-900">
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 text-white transition duration-150 group-hover:bg-primary group-hover:text-black">
                                         {item.icon}
                                     </span>
                                     <span className="flex-1 text-left">{item.label}</span>
                                     {item.badge !== undefined ? (
-                                        <span className="inline-flex min-h-[1.5rem] min-w-[1.5rem] items-center justify-center rounded-full bg-primary/90 px-2 text-xs font-bold text-white dark:bg-accent/90">
+                                        <span className="inline-flex min-h-[1.5rem] min-w-[1.5rem] items-center justify-center rounded-full bg-primary px-2 text-xs font-bold text-black">
                                             {item.badge}
                                         </span>
                                     ) : null}
@@ -104,13 +104,13 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLogg
                         ))}
                     </ul>
                     {isLoggedIn && (
-                        <ul className="mt-6 space-y-1 border-t border-white/30 pt-4 dark:border-gray-800/60">
+                        <ul className="mt-6 space-y-1 border-t border-white/10 pt-4">
                             <li>
                                 <button
                                     onClick={handleLogoutClick}
-                                    className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-red-600 transition duration-150 hover:bg-red-50/80 dark:text-red-300 dark:hover:bg-red-900/40"
+                                    className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-danger transition duration-150 hover:bg-danger/10"
                                 >
-                                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50 text-red-500 transition duration-150 group-hover:bg-red-500 group-hover:text-white dark:bg-red-900/30 dark:text-red-300 dark:group-hover:bg-red-500">
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-danger/10 text-danger transition duration-150 group-hover:bg-danger group-hover:text-black">
                                         <ArrowLeftOnRectangleIcon className="h-6 w-6" />
                                     </span>
                                     Log Out

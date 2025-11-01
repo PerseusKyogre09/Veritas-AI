@@ -196,24 +196,24 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
 
   const tabClasses = (type: InputType) => `relative flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${
     inputType === type
-    ? 'bg-gradient-to-r from-primary via-accent to-secondary text-white shadow-md shadow-primary/25'
-    : 'text-gray-600 dark:text-gray-300 hover:bg-white/70 hover:text-primary dark:hover:bg-gray-800/70 dark:hover:text-accent'
+    ? 'bg-primary text-black shadow-md shadow-primary/40'
+    : 'text-white/60 hover:bg-white/5 hover:text-white'
   }`;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
-      <div className="relative overflow-hidden rounded-3xl border border-white/40 bg-white/70 p-8 shadow-xl shadow-primary/10 backdrop-blur-md transition-colors duration-200 dark:border-gray-800/60 dark:bg-gray-900/70 dark:shadow-black/30 sm:p-10">
-        <div className="pointer-events-none absolute inset-x-0 -top-40 mx-auto h-72 w-72 rounded-full bg-primary/15 blur-3xl dark:bg-accent/25" />
-        <div className="pointer-events-none absolute -bottom-20 left-16 h-32 w-32 rounded-full bg-secondary/15 blur-2xl dark:bg-secondary/25" />
+    <div className="mx-auto max-w-4xl space-y-8 text-white">
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0C0C0C] p-8 shadow-xl shadow-black/60 sm:p-10">
+        <div className="pointer-events-none absolute inset-x-0 -top-40 mx-auto h-72 w-72 rounded-full bg-primary/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 left-16 h-32 w-32 rounded-full bg-secondary/20 blur-2xl" />
         <div className="relative space-y-6">
           <div className="space-y-2">
-            <h2 className="text-3xl font-semibold tracking-tight text-dark dark:text-white">Content Analyzer</h2>
-            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+            <h2 className="text-3xl font-semibold tracking-tight text-white">Content Analyzer</h2>
+            <p className="text-sm leading-relaxed text-white/60">
               Paste text or drop in a URL. We auto-detect language, cleanse the content, and surface a transparent credibility breakdown.
             </p>
           </div>
 
-          <div className="relative grid grid-cols-2 gap-1 rounded-full border border-primary/15 bg-white/70 p-1 text-center dark:border-accent/30 dark:bg-gray-900/70">
+          <div className="relative grid grid-cols-2 gap-1 rounded-full border border-white/10 bg-white/5 p-1 text-center">
             <button onClick={() => handleTabChange('text')} className={tabClasses('text')}>
               Analyze text
             </button>
@@ -229,14 +229,14 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder="Paste an article, post, or transcript here..."
-                  className="min-h-[180px] w-full resize-y rounded-2xl border border-white/40 bg-white/90 p-5 pr-12 text-sm leading-6 text-gray-800 shadow-inner shadow-primary/10 transition duration-200 placeholder:text-gray-400 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700/80 dark:bg-gray-900/80 dark:text-gray-100 dark:shadow-black/20 dark:placeholder:text-gray-500 dark:focus:border-accent/60 dark:focus:ring-accent/30"
+                  className="min-h-[180px] w-full resize-y rounded-2xl border border-white/10 bg-[#111111] p-5 pr-12 text-sm leading-6 text-white/80 shadow-inner shadow-black/40 transition duration-200 placeholder:text-white/30 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
                   disabled={isLoading}
                 />
                 {inputValue && !isLoading && (
                   <button
                     type="button"
                     onClick={() => setInputValue('')}
-                    className="absolute right-4 top-4 text-gray-400 transition-colors duration-150 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                    className="absolute right-4 top-4 text-white/40 transition-colors duration-150 hover:text-white/70"
                     aria-label="Clear input"
                   >
                     <XCircleIcon className="h-5 w-5" />
@@ -251,30 +251,30 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     placeholder="https://example.com/investigative-article"
-                    className="w-full rounded-2xl border border-white/40 bg-white/90 p-5 pr-12 text-sm text-gray-800 shadow-inner shadow-primary/10 transition duration-200 placeholder:text-gray-400 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700/80 dark:bg-gray-900/80 dark:text-gray-100 dark:shadow-black/20 dark:placeholder:text-gray-500 dark:focus:border-accent/60 dark:focus:ring-accent/30"
+                    className="w-full rounded-2xl border border-white/10 bg-[#111111] p-5 pr-12 text-sm text-white/80 shadow-inner shadow-black/40 transition duration-200 placeholder:text-white/30 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
                     disabled={isLoading}
                   />
                   {inputValue && !isLoading && (
                     <button
                       type="button"
                       onClick={() => setInputValue('')}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-150 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 transition-colors duration-150 hover:text-white/70"
                       aria-label="Clear input"
                     >
                       <XCircleIcon className="h-5 w-5" />
                     </button>
                   )}
                 </div>
-                <p className="rounded-2xl border border-dashed border-primary/30 bg-white/70 px-4 py-3 text-xs leading-5 text-gray-500 backdrop-blur-sm dark:border-accent/30 dark:bg-gray-900/60 dark:text-gray-400">
-                  <strong className="font-semibold text-primary dark:text-accent">Heads up:</strong> our Python microservice extracts readable content for deeper analysis. Confirm the scraper is running locally on <code className="rounded bg-black/10 px-1 py-0.5 text-[10px] tracking-wide">http://localhost:5000</code> when testing URLs.
+                <p className="rounded-2xl border border-dashed border-white/20 bg-white/5 px-4 py-3 text-xs leading-5 text-white/60">
+                  <strong className="font-semibold text-white">Heads up:</strong> our Python microservice extracts readable content for deeper analysis. Confirm the scraper is running locally on <code className="rounded bg-black/50 px-1 py-0.5 text-[10px] tracking-wide">http://localhost:5000</code> when testing URLs.
                 </p>
               </div>
             )}
 
             <div className="flex items-center justify-end gap-3">
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-white/40">
                 {detectedLanguage && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 font-medium text-primary dark:border-accent/30 dark:bg-accent/10 dark:text-accent">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/20 px-3 py-1 font-medium text-black">
                     <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                       <path fillRule="evenodd" d="M4.5 3A1.5 1.5 0 003 4.5v11A1.5 1.5 0 004.5 17h4a.5.5 0 00.4-.2l1.7-2.4h4.9a1.5 1.5 0 001.5-1.5v-7A1.5 1.5 0 0015.5 4h-5l-1.7-1.4A.5.5 0 008.4 2h-3.9z" clipRule="evenodd" />
                     </svg>
@@ -285,7 +285,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
               <button
                 type="submit"
                 disabled={isLoading || !inputValue.trim()}
-                className="inline-flex min-w-[160px] items-center justify-center rounded-full bg-gradient-to-r from-primary via-accent to-secondary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition-all duration-200 hover:-translate-y-[2px] hover:shadow-2xl disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
+                className="inline-flex min-w-[160px] items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-black shadow-lg shadow-primary/40 transition-all duration-200 hover:-translate-y-[2px] hover:bg-secondary disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30 disabled:shadow-none"
               >
                 {isLoading ? (
                   <>
@@ -309,10 +309,10 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
 
       {isLoading && !result && (
         <div className="flex justify-center">
-          <div className="inline-flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3 text-sm font-medium text-primary shadow-sm dark:border-accent/30 dark:bg-accent/10 dark:text-accent">
+          <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white/70 shadow-sm">
             <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 opacity-75 dark:bg-accent/60" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary dark:bg-accent" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
             </span>
             {loadingMessage ?? 'Running multi-layer analysis'}...
           </div>
@@ -320,10 +320,10 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
       )}
 
       {error && (
-        <div className="relative overflow-hidden rounded-2xl border border-red-200/70 bg-red-50/80 p-5 text-red-700 shadow-lg shadow-red-200/40 backdrop-blur-sm dark:border-red-500/40 dark:bg-red-900/40 dark:text-red-200">
+        <div className="relative overflow-hidden rounded-2xl border border-danger/40 bg-danger/10 p-5 text-danger shadow-lg shadow-danger/20">
           <button
             onClick={() => setError(null)}
-            className="absolute right-4 top-4 text-red-400 transition-colors duration-150 hover:text-red-600 dark:text-red-200 dark:hover:text-red-100"
+            className="absolute right-4 top-4 text-danger/70 transition-colors duration-150 hover:text-danger"
             aria-label="Dismiss error"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -333,8 +333,8 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ onAnalysisComplete }) => {
           <div className="flex items-start gap-3">
             <XCircleIcon className="mt-0.5 h-6 w-6 flex-shrink-0" />
             <div>
-              <h4 className="text-sm font-semibold">We hit a snag</h4>
-              <p className="mt-1 text-sm leading-relaxed">{error}</p>
+              <h4 className="text-sm font-semibold text-white">We hit a snag</h4>
+              <p className="mt-1 text-sm leading-relaxed text-white/80">{error}</p>
             </div>
           </div>
         </div>

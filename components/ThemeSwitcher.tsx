@@ -35,13 +35,13 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ theme, onThemeChan
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="rounded-full border border-white/40 bg-white/70 p-2 text-primary shadow-sm shadow-primary/10 transition duration-150 hover:bg-white/90 dark:border-gray-700/60 dark:bg-gray-900/70 dark:text-accent"
+        className="rounded-full border border-white/10 bg-white/5 p-2 text-white transition hover:border-white/30 hover:text-primary"
         aria-label="Toggle theme"
       >
         {currentThemeOption.icon}
       </button>
       {isOpen && (
-        <div className="absolute right-0 z-10 mt-3 w-44 overflow-hidden rounded-2xl border border-white/40 bg-white/90 py-2 text-sm shadow-xl shadow-primary/10 backdrop-blur dark:border-gray-800/60 dark:bg-gray-900/90 dark:shadow-black/30">
+        <div className="absolute right-0 z-10 mt-3 w-44 overflow-hidden rounded-2xl border border-white/10 bg-[#050505] py-2 text-sm shadow-xl shadow-black/60">
           {themeOptions.map(option => (
             <button
               key={option.value}
@@ -51,9 +51,9 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ theme, onThemeChan
               }}
               className={`flex w-full items-center gap-3 px-4 py-2 transition duration-150 ${
                 theme === option.value
-                  ? 'text-primary dark:text-accent'
-                  : 'text-gray-600 dark:text-gray-300'
-              } hover:bg-white/70 hover:text-primary dark:hover:bg-gray-800/80 dark:hover:text-accent`}
+                  ? 'text-primary'
+                  : 'text-white/60'
+              } hover:bg-white/5 hover:text-white`}
             >
               <span className="mr-3">{option.icon}</span>
               {option.label}

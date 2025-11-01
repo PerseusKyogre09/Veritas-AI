@@ -73,16 +73,16 @@ const App: React.FC = () => {
   const [communityError, setCommunityError] = useState<string | null>(null);
   const [communityUserId] = useState<string>(() => ensureCommunityUserId());
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
-  const [intendedView, setIntendedView] = useState<View | null>(null); // State for post-login navigation
+  const [intendedView, setIntendedView] = useState<View | null>(null);
   const [authInitializing, setAuthInitializing] = useState<boolean>(true);
   const [authenticating, setAuthenticating] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(() => {
-    const storedTheme = localStorage.getItem('theme');
+    const storedTheme = typeof window !== 'undefined' ? localStorage.getItem('theme') : null;
     if (storedTheme && Object.values(Theme).includes(storedTheme as Theme)) {
       return storedTheme as Theme;
     }
-    return Theme.SYSTEM;
+    return Theme.DARK;
   });
 
   const isLoggedIn = Boolean(user);
@@ -90,23 +90,23 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
+
     const applyTheme = () => {
-        if (theme === Theme.LIGHT) {
-            document.documentElement.classList.remove('dark');
-        } else if (theme === Theme.DARK) {
-            document.documentElement.classList.add('dark');
-        } else { // System
-            if (mediaQuery.matches) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
+      if (theme === Theme.LIGHT) {
+        document.documentElement.classList.remove('dark');
+      } else if (theme === Theme.DARK) {
+        document.documentElement.classList.add('dark');
+      } else {
+        if (mediaQuery.matches) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
         }
+      }
     };
 
     applyTheme();
-    
+
     const mediaQueryListener = () => applyTheme();
     mediaQuery.addEventListener('change', mediaQueryListener);
     return () => mediaQuery.removeEventListener('change', mediaQueryListener);
@@ -175,6 +175,7 @@ const App: React.FC = () => {
       return;
     }
     setCurrentView(view);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const addAnalysisToHistory = useCallback((item: AnalysisHistoryItem) => {
@@ -314,12 +315,11 @@ const App: React.FC = () => {
     : communityFeed.length;
   const communityBadgeCount = Math.min(communityPendingCount, 99);
 
-
   const renderContent = () => {
     switch (currentView) {
       case View.ANALYZER:
         return (
-          <Analyzer 
+          <Analyzer
             onAnalysisComplete={addAnalysisToHistory}
           />
         );
@@ -348,17 +348,17 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-light via-white to-slate-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 font-sans text-dark dark:text-gray-100 transition-colors duration-200">
-      <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[520px] w-[960px] -translate-y-1/2 rounded-full bg-primary/10 blur-3xl dark:bg-accent/20" />
-      <div className="pointer-events-none absolute -left-24 bottom-6 h-72 w-72 rounded-full bg-accent/10 blur-3xl dark:bg-primary/30" />
-      <div className="pointer-events-none absolute -right-16 top-1/3 h-64 w-64 rounded-full bg-secondary/10 blur-3xl dark:bg-secondary/20" />
+    <div className="relative min-h-screen overflow-hidden bg-[#050505] font-sans text-white">
+      <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[520px] w-[960px] -translate-y-1/2 rounded-full bg-primary/20 blur-3xl" />
+      <div className="pointer-events-none absolute -left-24 bottom-6 h-72 w-72 rounded-full bg-secondary/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 top-1/3 h-64 w-64 rounded-full bg-accent/20 blur-3xl" />
 
       <div className="relative flex min-h-screen flex-col">
-        <Header 
+        <Header
           onNavigate={handleNavigation}
           isLoggedIn={isLoggedIn}
           user={user}
-    onLogin={() => handleShowLoginModal()}
+          onLogin={() => handleShowLoginModal()}
           onLogout={handleLogout}
           theme={theme}
           onThemeChange={handleThemeChange}
@@ -369,13 +369,13 @@ const App: React.FC = () => {
             {renderContent()}
           </div>
         </main>
-        <footer className="relative border-t border-white/40 bg-white/70 py-6 text-center text-sm text-gray-600 backdrop-blur dark:border-gray-800/80 dark:bg-gray-900/70 dark:text-gray-400">
+        <footer className="border-t border-white/10 bg-black/50 py-6 text-center text-sm text-white/50">
           <p>&copy; {new Date().getFullYear()} Veritas AI · Fostering a more informed digital citizenry.</p>
         </footer>
       </div>
 
       {showLoginModal && (
-        <LoginModal 
+        <LoginModal
           onClose={handleCloseLoginModal}
           onLogin={handleLogin}
           isLoading={authenticating || authInitializing}
