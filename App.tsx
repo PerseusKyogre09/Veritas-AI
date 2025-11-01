@@ -340,7 +340,7 @@ const App: React.FC = () => {
       case View.PROFILE:
         return <Profile onNavigate={handleNavigation} user={user} />;
       case View.SETTINGS:
-        return <Settings theme={theme} onThemeChange={handleThemeChange} />;
+        return <Settings theme={theme} onThemeChange={handleThemeChange} user={user} />;
       case View.DASHBOARD:
       default:
         return <Dashboard onNavigate={() => handleNavigation(View.ANALYZER)} />;

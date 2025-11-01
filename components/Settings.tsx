@@ -1,17 +1,39 @@
-import React from 'react';
-import { Theme } from '../types';
+import React, { useEffect, useState } from 'react';
+import { Theme, UserProfile } from '../types';
 import { ThemeSwitcher } from './ThemeSwitcher';
 
 interface SettingsProps {
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
+  user: UserProfile | null;
 }
 
-export const Settings: React.FC<SettingsProps> = ({ theme, onThemeChange }) => {
+const deriveDisplayName = (profile: UserProfile | null): string => {
+  if (!profile) {
+    return '';
+  }
+  if (profile.displayName && profile.displayName.trim().length > 0) {
+    return profile.displayName.trim();
+  }
+  if (profile.email) {
+    const [localPart] = profile.email.split('@');
+    return localPart ?? profile.email;
+  }
+  return '';
+};
+
+export const Settings: React.FC<SettingsProps> = ({ theme, onThemeChange, user }) => {
+  const [name, setName] = useState<string>(() => deriveDisplayName(user));
+  const [email, setEmail] = useState<string>(() => user?.email ?? '');
+
+  useEffect(() => {
+    setName(deriveDisplayName(user));
+    setEmail(user?.email ?? '');
+  }, [user?.displayName, user?.email]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would submit changes to a backend.
-    // For now, it just prevents the form from reloading.
+    // In a real implementation this is where profile updates would be persisted to Firestore.
   };
 
   return (
@@ -49,7 +71,8 @@ export const Settings: React.FC<SettingsProps> = ({ theme, onThemeChange }) => {
                 <input
                   type="text"
                   id="name"
-                  defaultValue="Demo User"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
                   className="w-full rounded-2xl border border-white/40 bg-white/80 px-4 py-3 text-sm text-gray-800 shadow-inner shadow-primary/10 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700/60 dark:bg-gray-900/70 dark:text-gray-100 dark:focus:border-accent/50 dark:focus:ring-accent/30"
                 />
               </div>
@@ -58,7 +81,8 @@ export const Settings: React.FC<SettingsProps> = ({ theme, onThemeChange }) => {
                 <input
                   type="email"
                   id="email"
-                  defaultValue="demo.user@example.com"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                   className="w-full rounded-2xl border border-white/40 bg-white/80 px-4 py-3 text-sm text-gray-800 shadow-inner shadow-primary/10 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700/60 dark:bg-gray-900/70 dark:text-gray-100 dark:focus:border-accent/50 dark:focus:ring-accent/30"
                 />
               </div>
