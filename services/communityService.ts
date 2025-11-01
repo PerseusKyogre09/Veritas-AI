@@ -244,12 +244,19 @@ export const recordCommunityVote = async (
     );
 
     // Create updated userVotes object with only the current user's vote changed
+    // Filter out null votes to keep the map clean
     const updatedVotes = { ...existingVotes, [userId]: direction };
+    const cleanedVotes: Record<string, VoteDirection> = {};
+    for (const [uid, vote] of Object.entries(updatedVotes)) {
+      if (vote !== null) {
+        cleanedVotes[uid] = vote;
+      }
+    }
 
     transaction.update(ref, {
       supportCount: counts.supportCount,
       disputeCount: counts.disputeCount,
-      userVotes: updatedVotes,
+      userVotes: cleanedVotes,
     });
   });
 };
