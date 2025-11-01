@@ -243,7 +243,7 @@ export const recordCommunityVote = async (
       Number.isFinite(data.disputeCount) ? Number(data.disputeCount) : 0,
     );
 
-    // Update the entire userVotes object
+    // Create updated userVotes object with only the current user's vote changed
     const updatedVotes = { ...existingVotes, [userId]: direction };
 
     transaction.update(ref, {

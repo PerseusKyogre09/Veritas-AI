@@ -1,14 +1,94 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access to communityFeed for authenticated users
-    match /communityFeed/{document} {
-      allow read, write: if request.auth != null;
+
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Allow read/write access to all documents for authenticated users (more permissive)
+    function isShortString(value, maxLen) {
+      return value is string && value.size() <= maxLen;
+    }
+
+    function isScore(value) {
+      return value is number && value >= 0 && value <= 100;
+    }
+
+    function isNonNegativeInt(value) {
+      return value is number && value >= 0 && value == value.floor();
+    }
+
+    function hasValidVerdict(value) {
+      return value == null ||
+        value in ['Likely AI-generated', 'Possibly AI-assisted', 'Likely human-authored'];
+    }
+
+    function isValidIndicators(value) {
+      return value == null || (value is list && value.size() <= 6);
+    }
+
+    function isValidAiDetection(value) {
+      return value == null || (
+        value is map &&
+        (!('verdict' in value) || hasValidVerdict(value.verdict)) &&
+        (!('likelihoodScore' in value) || isScore(value.likelihoodScore)) &&
+        (!('confidence' in value) || isScore(value.confidence)) &&
+        (!('rationale' in value) || isShortString(value.rationale, 2000)) &&
+        (!('indicators' in value) || isValidIndicators(value.indicators))
+      );
+    }
+
+    function isValidCommunityDoc(data) {
+      return data.keys().hasOnly([
+        'headline',
+        'summary',
+        'credibilityScore',
+        'aiVerdict',
+        'aiDetection',
+        'timestamp',
+        'supportCount',
+        'disputeCount',
+        'userVotes'
+      ]) &&
+      ('headline' in data && isShortString(data.headline, 512)) &&
+      ('summary' in data && isShortString(data.summary, 5000)) &&
+      ('credibilityScore' in data && isScore(data.credibilityScore)) &&
+      (!('aiVerdict' in data) || hasValidVerdict(data.aiVerdict)) &&
+      (!('aiDetection' in data) || isValidAiDetection(data.aiDetection)) &&
+      (!('timestamp' in data) || data.timestamp is timestamp) &&
+      (!('supportCount' in data) || isNonNegativeInt(data.supportCount)) &&
+      (!('disputeCount' in data) || isNonNegativeInt(data.disputeCount)) &&
+      (!('userVotes' in data) || data.userVotes is map);
+    }
+
+    match /communityFeed/{entryId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn() && isValidCommunityDoc(request.resource.data);
+
+      allow update: if isSignedIn() && (
+        isValidCommunityDoc(request.resource.data) ||
+        (
+          request.resource.keys().hasOnly(['supportCount', 'disputeCount', 'userVotes']) &&
+          request.resource.data.supportCount is number &&
+          request.resource.data.disputeCount is number &&
+          request.resource.data.userVotes is map &&
+          request.resource.data.userVotes.diff(resource.data.userVotes).addedKeys().hasOnly([request.auth.uid]) &&
+          request.resource.data.userVotes.diff(resource.data.userVotes).changedKeys().hasOnly([request.auth.uid]) &&
+          request.resource.data.userVotes.diff(resource.data.userVotes).removedKeys().hasOnly([request.auth.uid])
+        )
+      );
+
+      allow delete: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
