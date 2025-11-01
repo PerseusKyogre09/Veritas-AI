@@ -8,7 +8,58 @@ interface AnalysisResultDisplayProps {
   result: AnalysisResult;
 }
 
+const injectScoreWaveStyles = (() => {
+  let injected = false;
+
+  return () => {
+    if (injected || typeof document === 'undefined') {
+      return;
+    }
+
+    const style = document.createElement('style');
+    style.id = 'score-wave-animation';
+    style.textContent = `
+      @keyframes score-wave-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes score-wave-glow {
+        0%,
+        100% {
+          opacity: 0.9;
+        }
+        50% {
+          opacity: 0.55;
+        }
+      }
+
+      .score-wave-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        background: conic-gradient(from 0deg, rgba(25, 118, 210, 0.08) 0deg, rgba(13, 71, 161, 0.7) 120deg, rgba(25, 118, 210, 0.98) 210deg, rgba(13, 71, 161, 0.7) 300deg, rgba(25, 118, 210, 0.08) 360deg);
+        filter: drop-shadow(0 0 18px rgba(25, 118, 210, 0.35));
+        mask: radial-gradient(farthest-side, transparent calc(100% - 18px), rgba(0, 0, 0, 0.95) calc(100% - 10px));
+        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 18px), rgba(0, 0, 0, 0.95) calc(100% - 10px));
+        pointer-events: none;
+      }
+
+      .score-wave-ring-alt {
+        background: conic-gradient(from 90deg, rgba(13, 71, 161, 0.08) 0deg, rgba(25, 118, 210, 0.85) 140deg, rgba(13, 71, 161, 0.6) 240deg, rgba(25, 118, 210, 0.85) 360deg);
+        filter: drop-shadow(0 0 22px rgba(13, 71, 161, 0.25));
+      }
+    `;
+
+    document.head.appendChild(style);
+    injected = true;
+  };
+})();
+
 const ScoreCircle: React.FC<{ score: number }> = ({ score }) => {
+  injectScoreWaveStyles();
+
   const getPalette = () => {
     if (score >= 75) return { ring: 'stroke-success', text: 'text-success', ringAccent: 'ring-success/30' };
     if (score >= 40) return { ring: 'stroke-warning', text: 'text-warning', ringAccent: 'ring-warning/30' };
@@ -20,8 +71,20 @@ const ScoreCircle: React.FC<{ score: number }> = ({ score }) => {
   const offset = circumference - (score / 100) * circumference;
 
   return (
-    <div className={`relative flex h-44 w-44 items-center justify-center rounded-full bg-white/80 ring-2 backdrop-blur dark:bg-gray-900/70 ${palette.ringAccent}`}>
-      <svg className="h-40 w-40" viewBox="0 0 100 100">
+    <div className="relative flex h-44 w-44 items-center justify-center">
+      <div className="pointer-events-none absolute inset-0">
+        <div
+          className="score-wave-ring"
+          style={{ animation: 'score-wave-spin 8s linear infinite, score-wave-glow 3.6s ease-in-out infinite' }}
+        />
+        <div
+          className="score-wave-ring score-wave-ring-alt"
+          style={{ animation: 'score-wave-spin 12s linear infinite reverse, score-wave-glow 5s ease-in-out infinite' }}
+        />
+      </div>
+
+      <div className={`relative z-10 flex h-[168px] w-[168px] items-center justify-center rounded-full bg-white/80 ring-2 backdrop-blur dark:bg-gray-900/70 ${palette.ringAccent}`}>
+        <svg className="h-40 w-40" viewBox="0 0 100 100">
         <defs>
           <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#0D47A1" />
@@ -50,10 +113,11 @@ const ScoreCircle: React.FC<{ score: number }> = ({ score }) => {
           cy="50"
           transform="rotate(-90 50 50)"
         />
-      </svg>
-      <div className={`absolute flex flex-col items-center text-4xl font-extrabold ${palette.text}`}>
-        <span>{score}</span>
-        <span className="mt-1 text-xs font-semibold uppercase tracking-[0.4em] text-gray-400 dark:text-gray-500">Score</span>
+        </svg>
+        <div className={`absolute flex flex-col items-center text-4xl font-extrabold ${palette.text}`}>
+          <span>{score}</span>
+          <span className="mt-1 text-xs font-semibold uppercase tracking-[0.4em] text-gray-400 dark:text-gray-500">Score</span>
+        </div>
       </div>
     </div>
   );
