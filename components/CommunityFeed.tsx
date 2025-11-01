@@ -45,6 +45,7 @@ const CommunityFeedCard: React.FC<CommunityFeedCardProps> = ({ item, onVote }) =
   const supportShare = totalVotes > 0 ? Math.round((item.supportCount / totalVotes) * 100) : 0;
   const upActive = item.userVote === 'up';
   const downActive = item.userVote === 'down';
+  const aiDetection = item.aiDetection;
 
   return (
     <article
@@ -76,6 +77,35 @@ const CommunityFeedCard: React.FC<CommunityFeedCardProps> = ({ item, onVote }) =
             {item.summary}
           </p>
         </div>
+
+        {aiDetection && (
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 text-sm text-gray-700 shadow-sm dark:border-accent/25 dark:bg-accent/5 dark:text-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="font-semibold text-primary dark:text-accent">
+                AI generation signals
+              </div>
+              <div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                <span className="rounded-full bg-white/80 px-3 py-1 dark:bg-gray-900/60">
+                  Likelihood {aiDetection.likelihoodScore}
+                </span>
+                <span className="rounded-full bg-white/80 px-3 py-1 dark:bg-gray-900/60">
+                  Confidence {aiDetection.confidence}
+                </span>
+              </div>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+              {aiDetection.rationale}
+            </p>
+            <ul className="mt-3 grid gap-2 text-sm text-gray-600 dark:text-gray-300 sm:grid-cols-2">
+              {aiDetection.indicators.map((indicator, index) => (
+                <li key={`${item.id}-indicator-${index}`} className="flex items-start gap-2 rounded-xl bg-white/80 px-3 py-2 text-left shadow-sm dark:bg-gray-900/70">
+                  <span className="mt-1 inline-block h-2 w-2 min-w-[0.5rem] rounded-full bg-primary dark:bg-accent" aria-hidden="true" />
+                  <span>{indicator}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {totalVotes > 0 && (
           <div className="space-y-2">

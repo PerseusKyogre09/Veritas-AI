@@ -25,6 +25,14 @@ const truncateSummary = (value: string, limit = 260): string => {
   return `${safeValue.slice(0, limit - 3)}...`;
 };
 
+const describeCommunityError = (error: Error): string => {
+  const message = error.message || 'Community feed is currently unavailable.';
+  if (message.toLowerCase().includes('missing or insufficient permissions')) {
+    return 'Community feed is unavailable because Firebase denied access. Confirm that you are signed in and that your Firestore security rules allow reads from the communityFeed collection for this account.';
+  }
+  return message;
+};
+
 const createCommunityEntryFromAnalysis = (item: AnalysisHistoryItem): CommunityVoteItem => ({
   id: item.id,
   headline: item.query || 'Untitled submission',
@@ -32,6 +40,7 @@ const createCommunityEntryFromAnalysis = (item: AnalysisHistoryItem): CommunityV
   timestamp: item.timestamp,
   credibilityScore: Math.max(0, Math.min(100, Math.round(item.result.credibilityScore))),
   aiVerdict: item.result.aiGeneration?.verdict,
+  aiDetection: item.result.aiGeneration ?? null,
   supportCount: 0,
   disputeCount: 0,
   userVote: null,
@@ -143,7 +152,7 @@ const App: React.FC = () => {
         setCommunityError(null);
       },
       (error) => {
-        setCommunityError(error.message);
+        setCommunityError(describeCommunityError(error));
         setCommunityLoading(false);
       },
     );

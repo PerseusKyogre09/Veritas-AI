@@ -11,7 +11,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import { getFirestoreInstance, isFirebaseConfigured } from './firebaseClient';
-import { CommunityVoteItem, VoteDirection } from '../types';
+import { CommunityVoteItem, VoteDirection, AIGenerationAssessment } from '../types';
 
 const COLLECTION_NAME = 'communityFeed';
 
@@ -44,6 +44,56 @@ const allowedVerdicts: ReadonlyArray<CommunityVoteItem['aiVerdict']> = [
   'Possibly AI-assisted',
   'Likely human-authored',
 ];
+
+const clampScore = (value: unknown): number => {
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(100, Math.round(numeric)));
+};
+
+const sanitizeIndicators = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map(entry => (typeof entry === 'string' ? entry.trim() : ''))
+    .filter((entry): entry is string => entry.length > 0)
+    .slice(0, 6);
+};
+
+const parseAiDetection = (candidate: unknown): AIGenerationAssessment | undefined => {
+  if (!candidate || typeof candidate !== 'object') {
+    return undefined;
+  }
+
+  const verdictCandidate = typeof (candidate as { verdict?: unknown }).verdict === 'string'
+    ? (candidate as { verdict: string }).verdict.trim()
+    : '';
+  const verdict = allowedVerdicts.includes(verdictCandidate as CommunityVoteItem['aiVerdict'])
+    ? (verdictCandidate as AIGenerationAssessment['verdict'])
+    : undefined;
+
+  if (!verdict) {
+    return undefined;
+  }
+
+  const likelihoodScore = clampScore((candidate as { likelihoodScore?: unknown }).likelihoodScore);
+  const confidence = clampScore((candidate as { confidence?: unknown }).confidence);
+  const rationaleRaw = typeof (candidate as { rationale?: unknown }).rationale === 'string'
+    ? (candidate as { rationale: string }).rationale.trim()
+    : '';
+  const indicators = sanitizeIndicators((candidate as { indicators?: unknown }).indicators);
+
+  return {
+    verdict,
+    likelihoodScore,
+    confidence,
+    rationale: rationaleRaw || 'No rationale provided.',
+    indicators: indicators.length > 0 ? indicators : ['No explicit indicators were shared.'],
+  } satisfies AIGenerationAssessment;
+};
 
 const sanitizeVoteDirection = (value: unknown): VoteDirection | null => {
   if (value === 'up' || value === 'down') {
@@ -97,6 +147,7 @@ export const streamCommunityFeed = (
         timestamp,
         credibilityScore,
         aiVerdict,
+        aiDetection: parseAiDetection(data.aiDetection),
         supportCount,
         disputeCount,
         userVote,
@@ -125,6 +176,7 @@ export const upsertCommunityEntry = async (entry: CommunityVoteItem) => {
       summary: entry.summary,
       credibilityScore: entry.credibilityScore,
       aiVerdict: entry.aiVerdict ?? null,
+      aiDetection: entry.aiDetection ?? null,
       timestamp: serverTimestamp(),
     },
     { merge: true },

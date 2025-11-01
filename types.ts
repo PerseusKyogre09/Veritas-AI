@@ -69,6 +69,7 @@ export interface CommunityVoteItem {
     timestamp: string;
     credibilityScore: number;
     aiVerdict?: AIGenerationAssessment['verdict'];
+    aiDetection?: AIGenerationAssessment | null;
     supportCount: number;
     disputeCount: number;
     userVote: VoteDirection | null;
