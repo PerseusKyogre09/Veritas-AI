@@ -18,15 +18,15 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         minify: 'esbuild',
+        target: 'esnext',
         rollupOptions: {
           external: []
+        },
+        commonjsOptions: {
+          ignoreDynamicRequires: true
         }
       },
-      optimizeDeps: {
-        exclude: ['@rollup/rollup-win32-x64-msvc']
-      },
       esbuild: {
-        // Use esbuild for faster builds and to avoid rollup issues
         target: 'esnext'
       }
     };
