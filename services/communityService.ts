@@ -8,8 +8,9 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
+  type Firestore,
 } from 'firebase/firestore';
-import { db } from '../firebaseClient';
+import { getFirestoreInstance, isFirebaseConfigured } from './firebaseClient';
 import { CommunityVoteItem, VoteDirection } from '../types';
 
 const COLLECTION_NAME = 'communityFeed';
@@ -51,11 +52,26 @@ const sanitizeVoteDirection = (value: unknown): VoteDirection | null => {
   return null;
 };
 
+const ensureDb = (): Firestore => {
+  if (!isFirebaseConfigured()) {
+    throw new Error('Firebase is not configured.');
+  }
+  return getFirestoreInstance();
+};
+
 export const streamCommunityFeed = (
   userId: string,
   onUpdate: (items: CommunityVoteItem[]) => void,
   onError?: (error: Error) => void,
 ) => {
+  if (!isFirebaseConfigured()) {
+    queueMicrotask(() => {
+      onUpdate([]);
+    });
+    return () => undefined;
+  }
+
+  const db = ensureDb();
   const feedQuery = query(collection(db, COLLECTION_NAME), orderBy('timestamp', 'desc'));
 
   return onSnapshot(feedQuery, (snapshot) => {
@@ -95,6 +111,11 @@ export const streamCommunityFeed = (
 };
 
 export const upsertCommunityEntry = async (entry: CommunityVoteItem) => {
+  if (!isFirebaseConfigured()) {
+    return;
+  }
+
+  const db = ensureDb();
   const ref = doc(collection(db, COLLECTION_NAME), entry.id);
 
   await setDoc(
@@ -143,6 +164,11 @@ export const recordCommunityVote = async (
   userId: string,
   direction: VoteDirection | null,
 ) => {
+  if (!isFirebaseConfigured()) {
+    return;
+  }
+
+  const db = ensureDb();
   const ref = doc(db, COLLECTION_NAME, itemId);
 
   await runTransaction(db, async (transaction) => {
