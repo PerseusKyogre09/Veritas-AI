@@ -24,6 +24,24 @@ export interface KeyClaim {
     isMisleading: boolean;
 }
 
+export interface CommunityAnnotation {
+    id: string;
+    note: string;
+    createdAt: string;
+    author?: string;
+}
+
+export interface CommunityLedgerEntry {
+    claimId: string;
+    claim: string;
+    aiAssessment: 'Misleading' | 'Credible';
+    supportCount: number;
+    disputeCount: number;
+    annotations: CommunityAnnotation[];
+}
+
+export type CommunityLedgerMap = Record<string, CommunityLedgerEntry>;
+
 export interface AIGenerationAssessment {
     verdict: 'Likely AI-generated' | 'Possibly AI-assisted' | 'Likely human-authored';
     likelihoodScore: number;
