@@ -8,6 +8,7 @@ import { Profile } from './components/Profile';
 import { Settings } from './components/Settings';
 import { LoginModal } from './components/LoginModal';
 import { CommunityFeed } from './components/CommunityFeed';
+import { LandingPage } from './components/LandingPage';
 import { AnalysisHistoryItem, View, Theme, UserProfile, CommunityVoteItem, VoteDirection } from './types';
 import { isFirebaseConfigured, listenToUserProfileChanges, signInWithGoogle, signOutUser } from './services/firebaseClient';
 import { recordCommunityVote, streamCommunityFeed, upsertCommunityEntry } from './services/communityService';
@@ -65,7 +66,7 @@ const ensureCommunityUserId = (): string => {
 };
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<View>(View.DASHBOARD);
+  const [currentView, setCurrentView] = useState<View>(View.LANDING);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryItem[]>([]);
   const [communityFeed, setCommunityFeed] = useState<CommunityVoteItem[]>([]);
@@ -133,6 +134,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!isLoggedIn && [View.PROFILE, View.HISTORY, View.SETTINGS].includes(currentView)) {
+      setCurrentView(View.DASHBOARD);
+    }
+  }, [isLoggedIn, currentView]);
+
+  useEffect(() => {
+    if (isLoggedIn && currentView === View.LANDING) {
       setCurrentView(View.DASHBOARD);
     }
   }, [isLoggedIn, currentView]);
@@ -280,9 +287,9 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    setAuthError(null);
-    setIntendedView(null);
-    setCurrentView(View.DASHBOARD);
+  setAuthError(null);
+  setIntendedView(null);
+  setCurrentView(View.LANDING);
 
     if (!firebaseReady) {
       setUser(null);
@@ -317,6 +324,14 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     switch (currentView) {
+      case View.LANDING:
+        return (
+          <LandingPage
+            onStartAnalyzer={() => handleNavigation(View.ANALYZER)}
+            onLogin={() => handleShowLoginModal()}
+            isLoggedIn={isLoggedIn}
+          />
+        );
       case View.ANALYZER:
         return (
           <Analyzer

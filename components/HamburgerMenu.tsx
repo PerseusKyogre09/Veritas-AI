@@ -9,6 +9,7 @@ import { UserCircleIcon } from './icons/UserCircleIcon';
 import { Cog6ToothIcon } from './icons/Cog6ToothIcon';
 import { ArrowLeftOnRectangleIcon } from './icons/ArrowLeftOnRectangleIcon';
 import { BellAlertIcon } from './icons/BellAlertIcon';
+import { SparklesIcon } from './icons/SparklesIcon';
 
 interface HamburgerMenuProps {
     onNavigate: (view: View) => void;
@@ -45,7 +46,8 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ onNavigate, isLogg
     };
 
     const menuItems = [
-        { label: 'Home', view: View.DASHBOARD, icon: <HomeIcon className="mr-3 h-6 w-6" /> },
+        { label: 'Overview', view: View.LANDING, icon: <SparklesIcon className="mr-3 h-6 w-6" /> },
+        { label: 'Workspace', view: View.DASHBOARD, icon: <HomeIcon className="mr-3 h-6 w-6" /> },
         { label: 'Community feed', view: View.COMMUNITY, icon: <BellAlertIcon className="mr-3 h-6 w-6" />, badge: communityPendingCount > 0 ? Math.min(communityPendingCount, 99) : undefined },
         { label: 'History', view: View.HISTORY, icon: <ClockIcon className="mr-3 h-6 w-6" /> },
         { label: 'Profile', view: View.PROFILE, icon: <UserCircleIcon className="mr-3 h-6 w-6" /> },

@@ -45,6 +45,9 @@ const resolveDisplayName = (profile: UserProfile | null): string => {
 export const Header: React.FC<HeaderProps> = ({ onNavigate, isLoggedIn, user, onLogin, onLogout, theme, onThemeChange, communityPendingCount }) => {
   const userInitials = resolveInitials(user);
   const displayName = resolveDisplayName(user);
+  const handleLogoNavigation = () => {
+    onNavigate(isLoggedIn ? View.DASHBOARD : View.LANDING);
+  };
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050505]/90 text-white backdrop-blur">
       <nav className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
@@ -56,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate, isLoggedIn, user, on
             communityPendingCount={communityPendingCount}
           />
           <button
-            onClick={() => onNavigate(View.DASHBOARD)}
+            onClick={handleLogoNavigation}
             className="flex items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold tracking-tight text-white transition-transform hover:scale-[1.02]"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-black">
@@ -67,6 +70,20 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate, isLoggedIn, user, on
         </div>
 
         <div className="flex items-center gap-3 text-sm">
+          <button
+            onClick={() => onNavigate(View.LANDING)}
+            className="hidden items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-white/70 transition-colors hover:border-white/30 hover:text-white sm:inline-flex"
+          >
+            Overview
+          </button>
+          {isLoggedIn && (
+            <button
+              onClick={() => onNavigate(View.DASHBOARD)}
+              className="hidden items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-white/70 transition-colors hover:border-white/30 hover:text-white lg:inline-flex"
+            >
+              Workspace
+            </button>
+          )}
           <button
             onClick={() => onNavigate(View.COMMUNITY)}
             className="relative inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-white/70 transition-colors hover:border-white/30 hover:text-white"
