@@ -55,10 +55,9 @@ const extractTextFromHtml = (html: string): string => {
 const fetchUrlContent = async (url: string): Promise<string> => {
     console.log(`Fetching content for URL via Python scraping service: ${url}`);
     
-    // Use production URL in production, localhost in development
-    const scraperEndpoint = process.env.NODE_ENV === 'production' 
-        ? 'https://veritas-ai-vpls.onrender.com/scrape'  // Fixed: Added /scrape endpoint
-        : 'http://localhost:5000/scrape';
+  const scraperEndpoint = import.meta.env.VITE_BACKEND_URL
+    ? `${import.meta.env.VITE_BACKEND_URL}/scrape`
+    : 'http://localhost:5000/scrape';
     
     try {
         const response = await fetch(scraperEndpoint, {
