@@ -78,7 +78,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate, isLoggedIn, user, on
           </button>
           {isLoggedIn && (
             <button
-              onClick={() => onNavigate(View.DASHBOARD)}
+              onClick={() => onNavigate(View.ANALYZER)}
               className="hidden items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-white/70 transition-colors hover:border-white/30 hover:text-white lg:inline-flex"
             >
               Workspace

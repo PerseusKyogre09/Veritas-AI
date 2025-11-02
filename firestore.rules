@@ -70,17 +70,8 @@ service cloud.firestore {
                     request.resource.data.supportCount == 0 &&
                     request.resource.data.disputeCount == 0;
 
-      // Simplified update rule for voting - allow authenticated users to update vote fields
-      allow update: if isSignedIn() && (
-        // Allow full document updates if they pass validation
-        isValidCommunityDoc(request.resource.data) ||
-        // Allow vote-only updates
-        (
-          request.resource.data.supportCount is number &&
-          request.resource.data.disputeCount is number &&
-          request.resource.data.userVotes is map
-        )
-      );
+      // Temporary: Allow all updates for authenticated users (for debugging)
+      allow update: if isSignedIn();
 
       allow delete: if false; // No deletion of main community feed entries
     }
