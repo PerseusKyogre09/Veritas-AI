@@ -1,54 +1,89 @@
-# Veritas AI: Enhanced with Python Backend
+# Veritas AI
 
-## 🚀 What's New
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![Python Version](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 
-Veritas AI now ships with a Python scraping microservice to eliminate CORS limits and a Gemini-driven AI authorship detector that flags whether an article appears human, AI-assisted, or fully AI-generated.
+An AI-powered misinformation and authorship detection platform that analyzes news articles for credibility, bias, and AI-generated content. Built during a hackathon, this full-stack application combines a React frontend with a Python backend and integrates Google's Gemini AI for advanced text analysis.
 
-### Feature Highlights
+## 🚀 Features
 
-- ✅ **Reliable Web Scraping** – Flask and Beautiful Soup bypass CORS and normalize article text.
-- ✅ **AI Authorship Detection** – Gemini highlights fully or partially AI-generated passages along with supporting signals such as repetition, missing citations, and tonal drift.
-- ✅ **Credibility Analysis** – Claim-level assessments, scorecards, and sourced evidence trails.
-- ✅ **First-Class Error Handling** – Clear failure states with actionable messaging.
-- ✅ **Seamless Frontend** – React and Vite experience with live language detection.
+- **AI Authorship Detection**: Identifies human-written, AI-assisted, or fully AI-generated content using Gemini AI
+- **Credibility Analysis**: Provides claim-level assessments with scorecards and evidence trails
+- **Web Scraping**: Bypasses CORS restrictions with a Python microservice using Flask and BeautifulSoup
+- **Real-time Analysis**: Live language detection and seamless frontend experience
+- **Community Feed**: Share and discuss analyzed articles with other users
+- **User Dashboard**: Track analysis history, manage profiles, and customize settings
+- **Firebase Integration**: Secure authentication and data storage with Firestore
+- **Responsive Design**: Modern UI built with React, TypeScript, and Tailwind CSS
+
+## 🛠 Tech Stack
+
+### Frontend
+- **React 18** with TypeScript
+- **Vite** for fast development and building
+- **Tailwind CSS** for styling
+- **React Router** for navigation
+- **Heroicons** for icons
+
+### Backend
+- **Python Flask** microservice for web scraping
+- **BeautifulSoup4** and **lxml** for HTML parsing
+- **Google Gemini AI** for content analysis
+
+### Infrastructure
+- **Firebase** (Authentication, Firestore, Hosting)
+- **Vercel** for deployment (optional)
+
+## 📋 Prerequisites
+
+- Node.js (v18 or higher)
+- Python (v3.8 or higher)
+- Gemini API key from Google AI Studio
+- Firebase project (for authentication and database)
 
 ## 🏃‍♂️ Quick Start
 
-### Prerequisites
+### Automatic Startup (Windows)
 
-- Node.js (v18+)
-- Python (v3.8+)
-- Gemini API key
+Double-click `start_services.bat` to launch both the Python backend and React frontend automatically.
 
-### Option 1 - Automatic Startup (Windows)
+### Manual Startup
 
-```bash
-start_services.bat
-```
-
-Double-click the script to launch both services.
-
-### Option 2 - Manual Startup
-
-1. **Start Python backend** (Terminal 1):
-
+1. **Clone the repository**:
    ```bash
-   cd "C:\Users\palpr\Programming_Projects\Google\Veritas-AI"
-   C:/Users/palpr/Programming_Projects/Google/.venv/Scripts/python.exe scraper_service.py
+   git clone https://github.com/PerseusKyogre09/Veritas-AI.git
+   cd Veritas-AI
    ```
 
-2. **Start React frontend** (Terminal 2):
-
+2. **Set up Python backend**:
    ```bash
-   cd "C:\Users\palpr\Programming_Projects\Google\Veritas-AI"
+   # Create virtual environment
+   python -m venv venv
+   venv\Scripts\activate  # On Windows
+   # source venv/bin/activate  # On macOS/Linux
+
+   # Install dependencies
+   pip install -r requirements.txt
+
+   # Start the Flask service
+   python scraper_service.py
+   ```
+
+3. **Set up React frontend** (in a new terminal):
+   ```bash
+   # Install dependencies
+   npm install
+
+   # Start development server
    npm run dev
    ```
 
 ## 🌐 Access the Application
 
-- **Main App**: <http://localhost:5173/>
-- **Python API Health Check**: <http://localhost:5000/health>
-- **Python API Docs**: `POST` <http://localhost:5000/scrape>
+- **Main App**: [http://localhost:5173](http://localhost:5173)
+- **Python API Health Check**: [http://localhost:5000/health](http://localhost:5000/health)
+- **Python API Docs**: `POST` [http://localhost:5000/scrape](http://localhost:5000/scrape)
 
 ## 🧪 Testing
 
@@ -57,9 +92,11 @@ Double-click the script to launch both services.
 ```python
 import requests
 
+# Health check
 response = requests.get("http://localhost:5000/health")
 print(response.json())
 
+# Test scraping
 response = requests.post(
     "http://localhost:5000/scrape",
     json={"url": "https://example.com"}
@@ -69,138 +106,196 @@ print(response.json())
 
 ### Test the Complete Flow
 
-1. Visit <http://localhost:5173/>
-2. Click **Start Analyzing Now**
-3. Switch to **Analyze URL**
-4. Enter a news article link
-5. Press **Analyze** and review the results
+1. Visit [http://localhost:5173](http://localhost:5173)
+2. Sign in with Google
+3. Click "Start Analyzing Now"
+4. Switch to "Analyze URL"
+5. Enter a news article URL
+6. Press "Analyze" and review the results
 
-## 🛠 Architecture
+## 🏗 Project Structure
 
-```text
-Frontend (React/TypeScript) -> Python Backend (Flask/BeautifulSoup) -> Gemini AI
-        ↓                              ↓                              ↓
-   Port 5173                      Port 5000                   AI Analysis
 ```
-
-### Backend API Endpoints
-
-#### POST /scrape
-
-Scrapes content from a URL and returns clean text.
-
-##### Request
-
-```json
-{
-  "url": "https://example.com/article"
-}
-```
-
-##### Response
-
-```json
-{
-  "content": "Clean extracted text...",
-  "title": "Article Title",
-  "url": "https://example.com/article"
-}
-```
-
-#### GET /health
-
-Returns service health status.
-
-## 📁 Project Structure
-
-```text
 Veritas-AI/
-├── scraper_service.py
-├── requirements.txt
-├── start_services.bat
-├── start_services.sh
-├── components/
-│   └── Analyzer.tsx
-├── .env.local
-└── dist/
+├── app.py                          # Main Flask application
+├── scraper_service.py              # Web scraping microservice
+├── requirements.txt                # Python dependencies
+├── runtime.txt                     # Python runtime version
+├── Procfile                        # Heroku deployment config
+├── package.json                    # Node.js dependencies
+├── tsconfig.json                   # TypeScript configuration
+├── vite.config.ts                  # Vite configuration
+├── vercel.json                     # Vercel deployment config
+├── firebase.json                   # Firebase configuration
+├── firestore.rules                 # Firestore security rules
+├── index.html                      # Main HTML template
+├── index.tsx                       # React app entry point
+├── App.tsx                         # Main React component
+├── types.ts                        # TypeScript type definitions
+├── env.d.ts                        # Environment type definitions
+├── metadata.json                   # App metadata
+├── start_services.bat              # Windows startup script
+├── start_services.sh               # Unix startup script
+├── components/                     # React components
+│   ├── Analyzer.tsx                # Article analysis component
+│   ├── AnalysisResultDisplay.tsx   # Results display component
+│   ├── CommunityFeed.tsx           # Community discussion feed
+│   ├── Dashboard.tsx               # User dashboard
+│   ├── Header.tsx                  # App header
+│   ├── History.tsx                 # Analysis history
+│   ├── LandingPage.tsx             # Landing page
+│   ├── LoginModal.tsx              # Authentication modal
+│   ├── Profile.tsx                 # User profile
+│   ├── Settings.tsx                # User settings
+│   ├── ThemeSwitcher.tsx           # Dark/light theme toggle
+│   └── icons/                      # Custom icon components
+├── services/                       # Service modules
+│   ├── communityService.ts         # Community features
+│   ├── firebaseClient.ts           # Firebase utilities
+│   └── geminiService.ts            # Gemini AI integration
+└── README.md                       # This file
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-Create `.env.local`:
+Create a `.env.local` file in the root directory:
 
 ```bash
-GEMINI_API_KEY=your_api_key_here
+# Gemini AI API Key
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Firebase Configuration
 VITE_FIREBASE_API_KEY=your_firebase_api_key
 VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your_project_id
 VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
-VITE_FIREBASE_MEASUREMENT_ID=optional_measurement_id
+VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
 
-### Firebase Authentication & Firestore
+### Firebase Setup
 
-1. Create a Firebase project (or reuse an existing one) from the [Firebase console](https://console.firebase.google.com/).
-2. Register a new **Web App** and copy the config values into `.env.local` using the variables above.
-3. In **Build → Authentication**, enable the **Google** sign-in provider and add your local development domain (e.g. `http://localhost:5173`) to the authorized domains list.
-4. In **Build → Firestore Database**, create a database in production mode. The app stores basic user profiles in the `users` collection.
-5. If you plan to use Firebase Analytics, copy the Measurement ID (`G-XXXXXXX`) into `VITE_FIREBASE_MEASUREMENT_ID`.
-6. Restart the Vite dev server after updating environment variables.
+1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+2. Enable Authentication with Google provider
+3. Create a Firestore database
+4. Add your domain to authorized domains for authentication
+5. Copy the config values to your `.env.local` file
 
-### Python Dependencies (`requirements.txt`)
+### Python Dependencies
 
-```text
-flask
-flask-cors
-requests
-beautifulsoup4
-lxml
+The `requirements.txt` includes:
+- flask
+- flask-cors
+- requests
+- beautifulsoup4
+- lxml
+- google-generativeai
+
+## 📡 API Documentation
+
+### Backend Endpoints
+
+#### `POST /scrape`
+Scrapes content from a given URL and returns cleaned text.
+
+**Request Body:**
+```json
+{
+  "url": "https://example.com/article"
+}
+```
+
+**Response:**
+```json
+{
+  "content": "Clean extracted article text...",
+  "title": "Article Title",
+  "url": "https://example.com/article"
+}
+```
+
+#### `GET /health`
+Returns the health status of the scraping service.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-11-02T12:00:00Z"
+}
 ```
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-1. **"Could not connect to scraping service"**
-   - Ensure the Python backend is running on port 5000.
-   - Confirm the port is not in use.
+1. **Connection to scraping service fails**
+   - Ensure Python backend is running on port 5000
+   - Check for port conflicts
 
-2. **"Module not found" errors**
-   - Install dependencies with `pip install -r requirements.txt`.
-   - Activate the correct virtual environment.
+2. **Module not found errors**
+   - Install Python dependencies: `pip install -r requirements.txt`
+   - Activate virtual environment
 
 3. **CORS errors**
-   - The backend handles CORS; ensure both services run on localhost.
+   - Backend handles CORS; ensure both services run on localhost
 
-4. **"Failed to scrape content"**
-   - Some sites block scraping.
-   - Verify the URL loads in a browser.
-   - Try a different article.
+4. **Scraping fails**
+   - Some sites block scraping; try different URLs
+   - Verify URL loads in browser
 
 ### Port Conflicts
 
-If ports 5000 or 5173 are taken:
+- Change Flask port in `scraper_service.py`: `app.run(port=5001)`
+- Change Vite port: `npm run dev -- --port 3000`
 
-- Update the Flask port in `scraper_service.py` (`app.run(port=5001)`).
-- Override the Vite port with `npm run dev -- --port 3000`.
+## � Deployment
 
-## 🔒 Security Notes
+### Vercel (Frontend)
+```bash
+npm run build
+# Deploy using Vercel CLI or connect GitHub repo
+```
 
-- Development setup only.
-- Use a production-grade WSGI server for Flask deployments.
-- Add authentication and rate limiting for exposed endpoints.
-- Consider a reverse proxy for TLS termination.
+### Heroku (Backend)
+```bash
+# Deploy Python app using Heroku CLI
+heroku create your-app-name
+git push heroku main
+```
 
-## 🎯 Success
+### Firebase Hosting (Alternative)
+```bash
+npm run build
+firebase deploy --only hosting
+```
 
-You now have a misinformation and AI authorship detector that combines:
+## 🤝 Contributing
 
-- ✅ Python backend running on <http://localhost:5000>
-- ✅ React frontend running on <http://localhost:5173>
-- ✅ Gemini-powered credibility and authorship analysis
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
-Analyze text or URLs with confidence and surface AI-generated narratives alongside traditional misinformation cues.
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built during a hackathon
+- Powered by Google's Gemini AI
+- Firebase for backend services
+- Open source community for inspiration
+
+## 📞 Support
+
+For questions or issues, please open an issue on GitHub or contact the maintainers.
+
+---
+
+**Analyze with confidence. Surface AI-generated narratives alongside traditional misinformation cues.**
