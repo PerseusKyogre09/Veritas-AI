@@ -189,22 +189,36 @@ const App: React.FC = () => {
   }, []);
 
   const handleCommunityVote = useCallback((entryId: string, direction: VoteDirection) => {
+    console.log('Vote attempt:', { entryId, direction, isLoggedIn, effectiveCommunityUserId });
+    
     if (!isLoggedIn) {
+      console.log('User not logged in, showing login modal');
       setIntendedView(View.COMMUNITY);
       setShowLoginModal(true);
       return;
     }
 
-    let voteToPersist: VoteDirection | null = null;
+    if (!effectiveCommunityUserId) {
+      console.error('No user ID available for voting');
+      setCommunityError('Unable to record your vote: User ID not available');
+      return;
+    }
 
+    let voteToPersist: VoteDirection | null = null;
+    let originalEntry: CommunityVoteItem | null = null;
+
+    // Optimistically update the UI
     setCommunityFeed(prev =>
       prev.map(entry => {
         if (entry.id !== entryId) {
           return entry;
         }
 
+        originalEntry = entry; // Store original for rollback
         const currentVote = entry.userVote;
         voteToPersist = currentVote === direction ? null : direction;
+
+        console.log('Vote calculation:', { currentVote, direction, voteToPersist });
 
         let supportCount = entry.supportCount;
         let disputeCount = entry.disputeCount;
@@ -229,8 +243,17 @@ const App: React.FC = () => {
       })
     );
 
-    void recordCommunityVote(entryId, effectiveCommunityUserId, voteToPersist).catch((error) => {
+    // Persist the vote
+    recordCommunityVote(entryId, effectiveCommunityUserId, voteToPersist).catch((error) => {
       console.error('Failed to record community vote:', error);
+      
+      // Rollback the optimistic update
+      if (originalEntry) {
+        setCommunityFeed(prev =>
+          prev.map(entry => entry.id === entryId ? originalEntry! : entry)
+        );
+      }
+      
       setCommunityError(`Unable to record your vote: ${error.message}`);
     });
   }, [effectiveCommunityUserId, isLoggedIn]);

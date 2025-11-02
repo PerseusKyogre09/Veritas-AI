@@ -70,49 +70,29 @@ service cloud.firestore {
                     request.resource.data.supportCount == 0 &&
                     request.resource.data.disputeCount == 0;
 
-      // UPDATED: Now, the client cannot directly update supportCount or disputeCount.
       // Allow updates to vote-related fields with proper validation
       allow update: if isSignedIn() && (
         isValidCommunityDoc(request.resource.data) ||
         (
-          request.resource.keys().hasOnly(['supportCount', 'disputeCount', 'userVotes']) &&
+          // Allow updating vote counts and userVotes map
+          request.resource.data.keys().hasAll(['supportCount', 'disputeCount', 'userVotes']) &&
           request.resource.data.supportCount is number &&
           request.resource.data.disputeCount is number &&
           request.resource.data.userVotes is map &&
-          request.resource.data.userVotes.diff(resource.data.userVotes).addedKeys().hasOnly([request.auth.uid]) &&
-          request.resource.data.userVotes.diff(resource.data.userVotes).changedKeys().hasOnly([request.auth.uid]) &&
-          request.resource.data.userVotes.diff(resource.data.userVotes).removedKeys().hasOnly([request.auth.uid])
+          // Ensure user can only modify their own vote in the userVotes map
+          (
+            // User is adding/changing their vote
+            (request.auth.uid in request.resource.data.userVotes && 
+             request.resource.data.userVotes[request.auth.uid] in ['up', 'down']) ||
+            // User is removing their vote
+            (!(request.auth.uid in request.resource.data.userVotes) && 
+             request.auth.uid in resource.data.userVotes)
+          )
         )
       );
 
 
       allow delete: if false; // No deletion of main community feed entries
-
-      // NEW: Rules for the 'votes' subcollection
-      match /votes/{userId} {
-        // Users can read all votes for a community entry (e.g., to see who voted what)
-        allow read: if isSignedIn();
-
-        // A user can create their own vote document.
-        // userId in the path must match the authenticated user's UID.
-        allow create: if isSignedIn() &&
-                      request.auth.uid == userId && // User ID in path must match
-                      request.resource.data.keys().hasAll(['vote', 'timestamp']) &&
-                      request.resource.data.vote in ['support', 'dispute'] &&
-                      request.resource.data.timestamp is timestamp;
-
-        // A user can update their own vote document (e.g., change vote type).
-        // userId in the path must match the authenticated user's UID.
-        allow update: if isSignedIn() &&
-                      request.auth.uid == userId && // User ID in path must match
-                      request.resource.data.keys().hasAll(['vote', 'timestamp']) &&
-                      request.resource.data.vote in ['support', 'dispute'] &&
-                      request.resource.data.timestamp is timestamp;
-
-        // A user can delete their own vote document.
-        // userId in the path must match the authenticated user's UID.
-        allow delete: if isSignedIn() && request.auth.uid == userId;
-      }
     }
 
     match /users/{userId} {

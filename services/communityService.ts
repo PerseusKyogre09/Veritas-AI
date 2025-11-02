@@ -221,43 +221,67 @@ export const recordCommunityVote = async (
   direction: VoteDirection | null,
 ) => {
   if (!isFirebaseConfigured()) {
-    return;
+    throw new Error('Firebase is not configured');
+  }
+
+  if (!userId) {
+    throw new Error('User ID is required for voting');
   }
 
   const db = ensureDb();
   const ref = doc(db, COLLECTION_NAME, itemId);
 
-  await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(ref);
-    if (!snapshot.exists()) {
-      throw new Error('Community entry does not exist.');
-    }
-
-    const data = snapshot.data() ?? {};
-
-    const existingVotes = (data.userVotes ?? {}) as Record<string, VoteDirection | null>;
-    const previousVote = existingVotes[userId] ?? null;
-    const counts = adjustCounts(
-      previousVote,
-      direction,
-      Number.isFinite(data.supportCount) ? Number(data.supportCount) : 0,
-      Number.isFinite(data.disputeCount) ? Number(data.disputeCount) : 0,
-    );
-
-    // Create updated userVotes object with only the current user's vote changed
-    // Filter out null votes to keep the map clean
-    const updatedVotes = { ...existingVotes, [userId]: direction };
-    const cleanedVotes: Record<string, VoteDirection> = {};
-    for (const [uid, vote] of Object.entries(updatedVotes)) {
-      if (vote !== null) {
-        cleanedVotes[uid] = vote;
+  try {
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists()) {
+        throw new Error('Community entry does not exist.');
       }
-    }
 
-    transaction.update(ref, {
-      supportCount: counts.supportCount,
-      disputeCount: counts.disputeCount,
-      userVotes: cleanedVotes,
+      const data = snapshot.data() ?? {};
+
+      const existingVotes = (data.userVotes ?? {}) as Record<string, VoteDirection | null>;
+      const previousVote = existingVotes[userId] ?? null;
+      const counts = adjustCounts(
+        previousVote,
+        direction,
+        Number.isFinite(data.supportCount) ? Number(data.supportCount) : 0,
+        Number.isFinite(data.disputeCount) ? Number(data.disputeCount) : 0,
+      );
+
+      // Create updated userVotes object with only the current user's vote changed
+      // Filter out null votes to keep the map clean
+      const updatedVotes = { ...existingVotes };
+      if (direction === null) {
+        delete updatedVotes[userId];
+      } else {
+        updatedVotes[userId] = direction;
+      }
+
+      const cleanedVotes: Record<string, VoteDirection> = {};
+      for (const [uid, vote] of Object.entries(updatedVotes)) {
+        if (vote !== null) {
+          cleanedVotes[uid] = vote;
+        }
+      }
+
+      console.log('Updating vote:', {
+        itemId,
+        userId,
+        direction,
+        previousVote,
+        newCounts: counts,
+        userVotes: cleanedVotes
+      });
+
+      transaction.update(ref, {
+        supportCount: counts.supportCount,
+        disputeCount: counts.disputeCount,
+        userVotes: cleanedVotes,
+      });
     });
-  });
+  } catch (error) {
+    console.error('Vote recording failed:', error);
+    throw error;
+  }
 };
