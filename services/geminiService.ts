@@ -2,13 +2,13 @@ import { GoogleGenAI } from "@google/genai";
 import { AnalysisResult, Source, AIGenerationAssessment } from '../types';
 
 // Ensure the API key is available from environment variables
-if (!process.env.API_KEY) {
+if (!import.meta.env.VITE_API_KEY) {
     // In a real app, you'd want to handle this more gracefully.
     // For this project, we assume it's set.
-    console.warn("API_KEY environment variable not set. Using a mock service.");
+    console.warn("VITE_API_KEY environment variable not set. Using a mock service.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY! });
 
 const clampScore = (input: unknown): number => {
     const numericValue = typeof input === 'number' ? input : Number(input);
