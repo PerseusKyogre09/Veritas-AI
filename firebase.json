@@ -15,5 +15,14 @@
         "destination": "/index.html"
       }
     ]
+  },
+  "apphosting": {
+    "runConfig": {
+      "cpu": "1",
+      "memory": "512Mi",
+      "maxInstances": 100,
+      "minInstances": 0,
+      "concurrency": 80
+    }
   }
 }
