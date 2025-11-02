@@ -2,13 +2,12 @@ import { GoogleGenAI } from "@google/genai";
 import { AnalysisResult, Source, AIGenerationAssessment } from '../types';
 
 // Ensure the API key is available from environment variables
-if (!import.meta.env.VITE_API_KEY) {
-    // In a real app, you'd want to handle this more gracefully.
-    // For this project, we assume it's set.
+const apiKey = import.meta.env.VITE_API_KEY;
+if (!apiKey) {
     console.warn("VITE_API_KEY environment variable not set. Using a mock service.");
 }
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY! });
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const clampScore = (input: unknown): number => {
     const numericValue = typeof input === 'number' ? input : Number(input);
@@ -183,7 +182,7 @@ const parseJsonResponse = (text: string): Omit<AnalysisResult, 'sources'> | null
 
 
 export const analyzeContent = async (content: string): Promise<AnalysisResult> => {
-    if (!process.env.API_KEY) {
+    if (!apiKey) {
         // MOCK IMPLEMENTATION FOR UI DEVELOPMENT
         console.log("Using mock Gemini service...");
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -286,7 +285,7 @@ export const analyzeContent = async (content: string): Promise<AnalysisResult> =
 };
 
 export const detectLanguage = async (content: string): Promise<string> => {
-    if (!process.env.API_KEY) {
+    if (!apiKey) {
         // MOCK IMPLEMENTATION FOR UI DEVELOPMENT
         console.log("Using mock language detection...");
         await new Promise(resolve => setTimeout(resolve, 500));
