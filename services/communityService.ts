@@ -220,6 +220,8 @@ export const recordCommunityVote = async (
   userId: string,
   direction: VoteDirection | null,
 ) => {
+  console.log('recordCommunityVote called with:', { itemId, userId, direction });
+  
   if (!isFirebaseConfigured()) {
     throw new Error('Firebase is not configured');
   }
@@ -233,12 +235,15 @@ export const recordCommunityVote = async (
 
   try {
     await runTransaction(db, async (transaction) => {
+      console.log('Starting transaction for vote update');
+      
       const snapshot = await transaction.get(ref);
       if (!snapshot.exists()) {
         throw new Error('Community entry does not exist.');
       }
 
       const data = snapshot.data() ?? {};
+      console.log('Current document data:', data);
 
       const existingVotes = (data.userVotes ?? {}) as Record<string, VoteDirection | null>;
       const previousVote = existingVotes[userId] ?? null;
@@ -265,23 +270,34 @@ export const recordCommunityVote = async (
         }
       }
 
-      console.log('Updating vote:', {
+      const updateData = {
+        supportCount: counts.supportCount,
+        disputeCount: counts.disputeCount,
+        userVotes: cleanedVotes,
+      };
+
+      console.log('Updating vote with data:', {
         itemId,
         userId,
         direction,
         previousVote,
         newCounts: counts,
-        userVotes: cleanedVotes
+        updateData
       });
 
-      transaction.update(ref, {
-        supportCount: counts.supportCount,
-        disputeCount: counts.disputeCount,
-        userVotes: cleanedVotes,
-      });
+      transaction.update(ref, updateData);
+      console.log('Transaction update completed successfully');
     });
+    
+    console.log('Vote recording completed successfully');
   } catch (error) {
     console.error('Vote recording failed:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
     throw error;
   }
 };

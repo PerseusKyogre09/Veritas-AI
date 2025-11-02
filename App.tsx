@@ -189,7 +189,14 @@ const App: React.FC = () => {
   }, []);
 
   const handleCommunityVote = useCallback((entryId: string, direction: VoteDirection) => {
-    console.log('Vote attempt:', { entryId, direction, isLoggedIn, effectiveCommunityUserId });
+    console.log('Vote attempt:', { 
+      entryId, 
+      direction, 
+      isLoggedIn, 
+      effectiveCommunityUserId,
+      user: user ? { uid: user.uid, email: user.email } : null,
+      firebaseReady
+    });
     
     if (!isLoggedIn) {
       console.log('User not logged in, showing login modal');
@@ -201,6 +208,12 @@ const App: React.FC = () => {
     if (!effectiveCommunityUserId) {
       console.error('No user ID available for voting');
       setCommunityError('Unable to record your vote: User ID not available');
+      return;
+    }
+
+    if (!firebaseReady) {
+      console.error('Firebase not ready');
+      setCommunityError('Unable to record your vote: Firebase not configured');
       return;
     }
 
@@ -256,7 +269,7 @@ const App: React.FC = () => {
       
       setCommunityError(`Unable to record your vote: ${error.message}`);
     });
-  }, [effectiveCommunityUserId, isLoggedIn]);
+  }, [effectiveCommunityUserId, isLoggedIn, user, firebaseReady]);
 
   const resolveAuthErrorMessage = (error: unknown): string => {
     const errorCode = typeof error === 'object' && error !== null && 'code' in error
