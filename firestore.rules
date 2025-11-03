@@ -15,7 +15,7 @@ service cloud.firestore {
     }
 
     function isNonNegativeInt(value) {
-      return value is number && value >= 0 && value == value.floor();
+      return value is number && value >= 0 && value == int(value);
     }
 
     function hasValidVerdict(value) {
