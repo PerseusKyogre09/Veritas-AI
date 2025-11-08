@@ -90,3 +90,16 @@ export interface AnalysisHistoryItem {
     timestamp: string;
     result: AnalysisResult;
 }
+
+export interface ImageAnalysisResult {
+    summary: string;
+    authenticity: {
+        verdict: 'Likely AI-generated' | 'Possibly AI-assisted' | 'Likely human-captured';
+        confidence: number;
+        rationale: string;
+        indicators: string[];
+        riskScore?: number;
+    };
+    contentWarnings: string[];
+    suggestedActions: string[];
+}

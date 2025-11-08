@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { AnalysisResult, Source, AIGenerationAssessment } from '../types';
+import { AnalysisResult, Source, AIGenerationAssessment, ImageAnalysisResult } from '../types';
 
 // Ensure the API key is available from environment variables
 const apiKey = import.meta.env.VITE_API_KEY;
@@ -76,15 +76,139 @@ const mockAiGenerationAssessment = (content: string): AIGenerationAssessment => 
     };
 };
 
-const sanitizeIndicators = (indicators: unknown): string[] => {
-    if (!Array.isArray(indicators)) {
-        return [];
+const sanitizeStringArray = (value: unknown, fallback: string[] = [], maxLength = 6): string[] => {
+    if (!Array.isArray(value)) {
+        return [...fallback];
     }
 
-    return indicators
-        .map((value) => (typeof value === 'string' ? value.trim() : ''))
-        .filter((value): value is string => value.length > 0)
-        .slice(0, 6);
+    const sanitized = value
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter((item): item is string => item.length > 0)
+        .slice(0, maxLength);
+
+    if (sanitized.length === 0) {
+        return [...fallback];
+    }
+
+    return sanitized;
+};
+
+const sanitizeIndicators = (indicators: unknown): string[] => {
+    const sanitized = sanitizeStringArray(indicators, [], 6);
+    if (sanitized.length === 0) {
+        return ['No strong stylistic signals of AI generation were identified.'];
+    }
+    return sanitized;
+};
+
+const sanitizeText = (value: unknown, fallback: string): string => {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed.length > 0) {
+            return trimmed;
+        }
+    }
+    return fallback;
+};
+
+const arrayBufferToBase64 = async (blob: Blob): Promise<string> => {
+    const buffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    let binary = '';
+
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+
+    if (typeof btoa === 'function') {
+        return btoa(binary);
+    }
+
+    const BufferCtor = (globalThis as { Buffer?: { from: (input: Uint8Array) => { toString: (encoding: string) => string } } }).Buffer;
+    if (BufferCtor) {
+        return BufferCtor.from(bytes).toString('base64');
+    }
+
+    throw new Error('Base64 encoding is not supported in this environment.');
+};
+
+const runImageSuspicionAudit = async (params: {
+    base64Data: string;
+    mimeType: string;
+}): Promise<{ riskScore: number; verdict: ImageAnalysisResult['authenticity']['verdict']; indicators: string[] } | undefined> => {
+    if (!ai) {
+        return {
+            riskScore: 55,
+            verdict: 'Possibly AI-assisted',
+            indicators: ['Mock audit: heuristic risk score defaults to a cautious posture without real model evaluation.'],
+        };
+    }
+
+    const { base64Data, mimeType } = params;
+
+    const auditPrompt = `
+        You are an investigative forensic analyst specializing in AI-generated imagery.
+        Re-examine the provided image solely for signals of synthesis or heavy AI editing (GAN seams, warped structures, inconsistent physics, abnormal lighting, metadata overlays, etc.).
+        Be conservative: if uncertainty remains, err toward higher risk.
+
+        Respond strictly in JSON using this schema:
+        {
+          "riskScore": number (0-100, where 100 = high confidence the image is AI-generated or AI-edited),
+          "verdict": "Likely AI-generated" | "Possibly AI-assisted" | "Likely human-captured",
+          "indicators": ["short bullet cues highlighting the strongest forensic observations"]
+        }
+
+        Do not include any other text or commentary.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [
+                {
+                    role: 'user',
+                    parts: [
+                        { text: auditPrompt },
+                        { inlineData: { mimeType, data: base64Data } },
+                    ],
+                },
+            ],
+        });
+
+        const parsed = extractJsonObject<{ riskScore?: unknown; verdict?: unknown; indicators?: unknown }>(response.text ?? '');
+
+        if (!parsed) {
+            return undefined;
+        }
+
+        const allowedVerdicts: ReadonlyArray<ImageAnalysisResult['authenticity']['verdict']> = [
+            'Likely AI-generated',
+            'Possibly AI-assisted',
+            'Likely human-captured',
+        ];
+
+        const riskScore = clampScore(parsed.riskScore);
+        const verdictCandidate = typeof parsed.verdict === 'string' ? parsed.verdict.trim() : '';
+        const verdict = allowedVerdicts.includes(verdictCandidate as ImageAnalysisResult['authenticity']['verdict'])
+            ? (verdictCandidate as ImageAnalysisResult['authenticity']['verdict'])
+            : riskScore >= 65
+                ? 'Likely AI-generated'
+                : riskScore >= 45
+                    ? 'Possibly AI-assisted'
+                    : 'Likely human-captured';
+
+        const indicators = sanitizeStringArray(parsed.indicators, [], 6);
+
+        return {
+            riskScore,
+            verdict,
+            indicators,
+        };
+    } catch (error) {
+        console.error('Image suspicion audit failed:', error);
+        return undefined;
+    }
 };
 
 const sanitizeAiGeneration = (raw: unknown): AIGenerationAssessment | undefined => {
@@ -117,9 +241,6 @@ const sanitizeAiGeneration = (raw: unknown): AIGenerationAssessment | undefined 
         : 'No explicit rationale provided by the model.';
 
     const indicators = sanitizeIndicators((raw as { indicators?: unknown }).indicators);
-    if (indicators.length === 0) {
-        indicators.push('No strong stylistic signals of AI generation were identified.');
-    }
 
     return { verdict, likelihoodScore, confidence, rationale, indicators };
 };
@@ -157,7 +278,7 @@ const sanitizeKeyClaims = (claims: unknown): AnalysisResult['keyClaims'] => {
         .slice(0, 10);
 };
 
-const parseJsonResponse = (text: string): Omit<AnalysisResult, 'sources'> | null => {
+const extractJsonObject = <T>(text: string): T | null => {
     try {
         // The model might return markdown ```json ... ```, so we extract the JSON part.
         const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
@@ -172,12 +293,16 @@ const parseJsonResponse = (text: string): Omit<AnalysisResult, 'sources'> | null
         }
         const correctedJsonString = jsonString.substring(firstBrace, lastBrace + 1);
         
-        return JSON.parse(correctedJsonString);
+        return JSON.parse(correctedJsonString) as T;
     } catch (error) {
         console.error("Failed to parse JSON from model response:", error);
         console.error("Original response text:", text);
         return null;
     }
+}
+
+const parseJsonResponse = (text: string): Omit<AnalysisResult, 'sources'> | null => {
+    return extractJsonObject<Omit<AnalysisResult, 'sources'>>(text);
 }
 
 
@@ -281,6 +406,186 @@ export const analyzeContent = async (content: string): Promise<AnalysisResult> =
     } catch (error) {
         console.error("Error calling Gemini API:", error);
         throw new Error("An error occurred while analyzing the content. Please try again.");
+    }
+};
+
+export const analyzeImage = async (image: File | Blob): Promise<ImageAnalysisResult> => {
+    if (!image) {
+        throw new Error('No image provided for analysis.');
+    }
+
+    const maxBytes = 8 * 1024 * 1024; // 8 MB
+    if ('size' in image && typeof image.size === 'number' && image.size > maxBytes) {
+        throw new Error('The image exceeds the 8MB size limit. Please choose a smaller file.');
+    }
+
+    const mimeType = 'type' in image && typeof image.type === 'string' && image.type.length > 0
+        ? image.type
+        : 'image/png';
+
+    const base64Data = await arrayBufferToBase64(image);
+
+    if (!apiKey) {
+        console.log('Using mock image analyzer...');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        return {
+            summary: 'Mock analysis: The composition appears consistent with a staged press photo. Lighting and reflections look natural, but the subject exhibits subtle smoothing consistent with AI touch-ups.',
+            authenticity: {
+                verdict: 'Possibly AI-assisted',
+                confidence: 58,
+                rationale: 'Detected unusually uniform skin texture and slightly inconsistent reflections, suggesting selective AI editing.',
+                indicators: [
+                    'Skin texture lacks micro-details typical of high-resolution photography.',
+                    'Minor mismatches between reflections and light sources.',
+                    'No obvious background distortions detected.'
+                ],
+                riskScore: 62,
+            },
+            contentWarnings: ['Mock warning: Always corroborate with trusted photo archives before sharing.'],
+            suggestedActions: [
+                'Run a reverse image search to locate original sources.',
+                'Inspect EXIF metadata using a trusted tool if available.',
+            ],
+        };
+    }
+
+        const model = 'gemini-2.5-flash';
+        const prompt = `
+                You are an authenticity analyst assessing whether an image may be AI-generated, AI-edited, or captured directly from a camera.
+                Evaluate lighting consistency, anatomy, optical artifacts, text legibility, depth of field, compression seams, EXIF overlays, and any abnormal manipulations.
+                Treat the task as high-stakes fact-checking:
+                - If you cannot confidently rule out AI involvement, err toward "Possibly AI-assisted".
+                - "Likely human-captured" should only be used when the image shows strong evidence of real-world capture and negligible AI cues.
+                - Highlight concrete forensic observations (good or bad) rather than generic statements.
+
+                Provide your findings **strictly** as JSON with the following schema:
+                {
+                    "summary": "Two sentences describing what the image depicts and overall credibility signals.",
+                    "authenticity": {
+                        "verdict": "Likely AI-generated" | "Possibly AI-assisted" | "Likely human-captured",
+                        "confidence": number (0-100),
+                        "rationale": "Short explanation for the verdict",
+                        "indicators": ["3-6 concise bullet-style cues you observed"]
+                    },
+                    "contentWarnings": ["Any potential misinformation, deepfake, or sensitive-safety concerns"],
+                    "suggestedActions": ["Optional follow-up verification steps or next actions"]
+                }
+                Do not include any additional commentary outside the JSON object. If you remain uncertain, default to "Possibly AI-assisted" and explain why.
+        `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: [
+                {
+                    role: 'user',
+                    parts: [
+                        { text: prompt },
+                        { inlineData: { mimeType, data: base64Data } },
+                    ],
+                },
+            ],
+        });
+
+        const rawText = response.text ?? '';
+        const parsed = extractJsonObject<{
+            summary?: unknown;
+            authenticity?: {
+                verdict?: unknown;
+                confidence?: unknown;
+                rationale?: unknown;
+                indicators?: unknown;
+            };
+            contentWarnings?: unknown;
+            suggestedActions?: unknown;
+        }>(rawText);
+
+        if (!parsed) {
+            throw new Error('Failed to get a structured response from the AI model.');
+        }
+
+        const allowedVerdicts: ReadonlyArray<ImageAnalysisResult['authenticity']['verdict']> = [
+            'Likely AI-generated',
+            'Possibly AI-assisted',
+            'Likely human-captured',
+        ];
+
+        const verdictCandidate = typeof parsed.authenticity?.verdict === 'string'
+            ? parsed.authenticity.verdict.trim()
+            : '';
+
+        const verdict = allowedVerdicts.includes(verdictCandidate as ImageAnalysisResult['authenticity']['verdict'])
+            ? (verdictCandidate as ImageAnalysisResult['authenticity']['verdict'])
+            : 'Possibly AI-assisted';
+
+        const authenticityIndicators = sanitizeStringArray(
+            parsed.authenticity?.indicators,
+            ['No specific authenticity cues were highlighted.'],
+            6,
+        );
+
+        const sanitizedResult: ImageAnalysisResult = {
+            summary: sanitizeText(parsed.summary, 'No summary provided by the model.'),
+            authenticity: {
+                verdict,
+                confidence: clampScore(parsed.authenticity?.confidence),
+                rationale: sanitizeText(parsed.authenticity?.rationale, 'No rationale provided by the model.'),
+                indicators: authenticityIndicators,
+            },
+            contentWarnings: sanitizeStringArray(parsed.contentWarnings, [], 6),
+            suggestedActions: sanitizeStringArray(parsed.suggestedActions, [], 6),
+        };
+
+        const suspicion = await runImageSuspicionAudit({ base64Data, mimeType });
+
+        if (suspicion) {
+            sanitizedResult.authenticity.riskScore = suspicion.riskScore;
+
+            if (suspicion.indicators.length > 0) {
+                const mergedIndicators = sanitizeStringArray([
+                    `Secondary audit signals (risk ${suspicion.riskScore}%)`,
+                    ...suspicion.indicators,
+                    ...sanitizedResult.authenticity.indicators,
+                ], [], 6);
+                sanitizedResult.authenticity.indicators = mergedIndicators;
+            }
+
+            const reconcileVerdict = (
+                current: ImageAnalysisResult['authenticity']['verdict'],
+                backup: ImageAnalysisResult['authenticity']['verdict'],
+                riskScore: number,
+            ): ImageAnalysisResult['authenticity']['verdict'] => {
+                if (riskScore >= 75) {
+                    return 'Likely AI-generated';
+                }
+                if (riskScore >= 55 && current === 'Likely human-captured') {
+                    return 'Possibly AI-assisted';
+                }
+                if (backup === 'Likely AI-generated' && current !== 'Likely AI-generated') {
+                    return 'Possibly AI-assisted';
+                }
+                return current;
+            };
+
+            sanitizedResult.authenticity.verdict = reconcileVerdict(
+                sanitizedResult.authenticity.verdict,
+                suspicion.verdict,
+                suspicion.riskScore,
+            );
+
+            if (sanitizedResult.authenticity.verdict === 'Likely human-captured' && sanitizedResult.authenticity.confidence < 70) {
+                sanitizedResult.authenticity.verdict = 'Possibly AI-assisted';
+                sanitizedResult.authenticity.indicators = sanitizeStringArray([
+                    'Confidence below 70% triggers a cautious downgrade to "Possibly AI-assisted".',
+                    ...sanitizedResult.authenticity.indicators,
+                ], [], 6);
+            }
+        }
+
+        return sanitizedResult;
+    } catch (error) {
+        console.error('Error calling Gemini API for image analysis:', error);
+        throw new Error('An error occurred while analyzing the image. Please try again.');
     }
 };
 
