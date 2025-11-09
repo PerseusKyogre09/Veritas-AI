@@ -1,5 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
-import { AnalysisResult, Source, AIGenerationAssessment, ImageAnalysisResult } from '../types';
+import {
+    AnalysisResult,
+    Source,
+    AIGenerationAssessment,
+    ImageAnalysisResult,
+    BiasDetectionAssessment,
+    SentimentManipulationAssessment,
+    PredictiveAlert,
+} from '../types';
 
 // Ensure the API key is available from environment variables
 const apiKey = import.meta.env.VITE_API_KEY;
@@ -427,6 +435,92 @@ const sanitizeAiGeneration = (raw: unknown): AIGenerationAssessment | undefined 
     return { verdict, likelihoodScore, confidence, rationale, indicators };
 };
 
+const sanitizeBiasDetection = (raw: unknown): BiasDetectionAssessment | undefined => {
+    if (!raw || typeof raw !== 'object') {
+        return undefined;
+    }
+
+    const biasScore = clampScore((raw as { biasScore?: unknown }).biasScore);
+    const summaryRaw = sanitizeText((raw as { summary?: unknown }).summary, '').trim();
+    const biasTypes = sanitizeStringArray((raw as { biasTypes?: unknown }).biasTypes, [], 6);
+    const impactedAudiences = sanitizeStringArray((raw as { impactedAudiences?: unknown }).impactedAudiences, [], 6);
+    const indicators = sanitizeStringArray((raw as { indicators?: unknown }).indicators, [], 6);
+
+    if (!summaryRaw && biasTypes.length === 0 && indicators.length === 0 && impactedAudiences.length === 0 && biasScore === 0) {
+        return undefined;
+    }
+
+    return {
+        biasScore,
+        summary: summaryRaw || 'No bias summary provided.',
+        biasTypes,
+        impactedAudiences,
+        indicators,
+    };
+};
+
+const sanitizeSentimentManipulation = (raw: unknown): SentimentManipulationAssessment | undefined => {
+    if (!raw || typeof raw !== 'object') {
+        return undefined;
+    }
+
+    const allowedSentiments: ReadonlyArray<SentimentManipulationAssessment['overallSentiment']> = ['Positive', 'Negative', 'Neutral'];
+    const sentimentCandidate = typeof (raw as { overallSentiment?: unknown }).overallSentiment === 'string'
+        ? (raw as { overallSentiment: string }).overallSentiment.trim()
+        : '';
+    const overallSentiment = allowedSentiments.includes(sentimentCandidate as SentimentManipulationAssessment['overallSentiment'])
+        ? (sentimentCandidate as SentimentManipulationAssessment['overallSentiment'])
+        : 'Neutral';
+
+    const manipulationScore = clampScore((raw as { manipulationScore?: unknown }).manipulationScore);
+    const summaryRaw = sanitizeText((raw as { summary?: unknown }).summary, '').trim();
+    const manipulationSignals = sanitizeStringArray((raw as { manipulationSignals?: unknown }).manipulationSignals, [], 6);
+
+    if (!summaryRaw && manipulationSignals.length === 0 && manipulationScore === 0) {
+        return undefined;
+    }
+
+    return {
+        overallSentiment,
+        manipulationScore,
+        summary: summaryRaw || 'No sentiment summary provided.',
+        manipulationSignals,
+    };
+};
+
+const sanitizePredictiveAlerts = (raw: unknown): PredictiveAlert | undefined => {
+    if (!raw || typeof raw !== 'object') {
+        return undefined;
+    }
+
+    const allowedAlertLevels: ReadonlyArray<PredictiveAlert['alertLevel']> = ['Low', 'Moderate', 'High'];
+    const alertLevelCandidate = typeof (raw as { alertLevel?: unknown }).alertLevel === 'string'
+        ? (raw as { alertLevel: string }).alertLevel.trim()
+        : '';
+    const alertLevel = allowedAlertLevels.includes(alertLevelCandidate as PredictiveAlert['alertLevel'])
+        ? (alertLevelCandidate as PredictiveAlert['alertLevel'])
+        : 'Moderate';
+
+    const summaryRaw = sanitizeText((raw as { summary?: unknown }).summary, '').trim();
+    const confidence = clampScore((raw as { confidence?: unknown }).confidence);
+    const emergingNarratives = sanitizeStringArray((raw as { emergingNarratives?: unknown }).emergingNarratives, [], 6);
+    const recommendedActions = sanitizeStringArray((raw as { recommendedActions?: unknown }).recommendedActions, [], 6);
+    const timeframe = sanitizeText((raw as { timeframe?: unknown }).timeframe, 'No timeframe specified.');
+
+    if (!summaryRaw && emergingNarratives.length === 0 && recommendedActions.length === 0 && confidence === 0) {
+        return undefined;
+    }
+
+    return {
+        alertLevel,
+        summary: summaryRaw || 'No predictive alert summary provided.',
+        confidence,
+        emergingNarratives,
+        recommendedActions,
+        timeframe,
+    };
+};
+
 const sanitizeKeyClaims = (claims: unknown): AnalysisResult['keyClaims'] => {
     if (!Array.isArray(claims)) {
         return [];
@@ -506,6 +600,41 @@ export const analyzeContent = async (content: string): Promise<AnalysisResult> =
                 { claim: "Statistic C is used.", assessment: "This statistic is accurate but presented out of context to support a misleading conclusion.", isMisleading: false },
             ],
             aiGeneration: mockAiGenerationAssessment(content),
+            biasDetection: {
+                biasScore: 62,
+                summary: "Language framing leans toward fear-based rhetoric and selectively highlights data that disadvantages a particular group.",
+                biasTypes: ["Ideological", "Confirmation"],
+                impactedAudiences: ["General public", "Targeted political group"],
+                indicators: [
+                    "Disproportionate focus on negative outcomes without counterpoints",
+                    "Loaded adjectives reinforcing an in-group/out-group narrative",
+                    "Absence of neutral expert testimony",
+                ],
+            },
+            sentimentManipulation: {
+                overallSentiment: 'Negative',
+                manipulationScore: 71,
+                summary: "The tone is sharply critical and leverages anxiety-laden phrasing to push readers toward a defensive stance.",
+                manipulationSignals: [
+                    "Heightened urgency language without timelines",
+                    "Direct appeals to fear and loss aversion",
+                    "Binary framing that discourages nuanced interpretation",
+                ],
+            },
+            predictiveAlerts: {
+                alertLevel: 'Moderate',
+                summary: "Narrative mirrors a resurfacing misinformation theme flagged by fact-checkers earlier this quarter.",
+                confidence: 68,
+                emergingNarratives: [
+                    "Renewed claims around institutional cover-ups",
+                    "Coordinated messaging from fringe outlets",
+                ],
+                recommendedActions: [
+                    "Monitor trusted fact-checking feeds for corroborating debunks",
+                    "Share context-setting resources with at-risk communities",
+                ],
+                timeframe: "Likely to trend over the next 1-2 weeks",
+            },
             sources: [
                 { uri: "https://www.example-fact-check.com/article1", title: "Fact Check on Claim A - Example News" },
                 { uri: "https://www.credible-source.org/research-paper", title: "Original Research Paper on Related Topic - Credible Source" },
@@ -518,31 +647,52 @@ export const analyzeContent = async (content: string): Promise<AnalysisResult> =
     const prompt = `
         Analyze the following text for potential misinformation, propaganda, or logical fallacies.
         Act as an expert fact-checker. Be objective and neutral.
-        Provide your analysis in a JSON object with this exact structure: 
+        Provide your analysis **strictly** as a JSON object with this exact structure and field ordering:
         {
             "credibilityScore": number (0-100, where 0 is highly misleading and 100 is highly credible),
-            "summary": "string (A brief summary of your findings, highlighting the overall tone and trustworthiness)",
+            "summary": "string (Briefly summarize the overall credibility and tone)",
             "keyClaims": [
                 {
                     "claim": "string (Identify a specific claim made in the text)",
-                    "assessment": "string (Assess the claim's validity, context, and potential for being misleading)",
-                    "isMisleading": boolean (true if the claim is misleading, false otherwise)
+                    "assessment": "string (Assess validity, missing context, or fallacies)",
+                    "isMisleading": boolean (true if the claim is misleading)
                 }
             ],
+            "biasDetection": {
+                "biasScore": number (0-100 severity of bias),
+                "summary": "string (Describe the bias and framing detected)",
+                "biasTypes": ["string" (specific bias categories, e.g., ideological, confirmation)],
+                "impactedAudiences": ["string" (groups or demographics most affected)],
+                "indicators": ["string" (2-6 concrete linguistic or sourcing cues of bias)]
+            },
+            "sentimentManipulation": {
+                "overallSentiment": "Positive" | "Negative" | "Neutral",
+                "manipulationScore": number (0-100 showing intensity of manipulative rhetoric),
+                "summary": "string (How emotion is used to steer perception)",
+                "manipulationSignals": ["string" (2-6 observed tactics such as fear appeals, sensational framing, virtue signaling)]
+            },
+            "predictiveAlerts": {
+                "alertLevel": "Low" | "Moderate" | "High",
+                "summary": "string (Why this narrative may trend or re-emerge)",
+                "confidence": number (0-100 confidence in this alert),
+                "emergingNarratives": ["string" (1-5 related narratives to monitor)],
+                "recommendedActions": ["string" (1-5 mitigation or monitoring steps)],
+                "timeframe": "string (expected window, e.g., next 7 days)"
+            },
             "aiGeneration": {
-                "verdict": "Likely AI-generated",
-                "likelihoodScore": number,
-                "confidence": number,
+                "verdict": "Likely AI-generated" | "Possibly AI-assisted" | "Likely human-authored",
+                "likelihoodScore": number (0-100),
+                "confidence": number (0-100),
                 "rationale": "string",
-                "indicators": ["string", ...]
+                "indicators": ["string" (3-6 short bullet cues)]
             }
         }
-        Do not include any text outside of the JSON object.
-        Use your search tool to verify claims against credible sources.
-        For the aiGeneration.verdict field you must choose one of: "Likely AI-generated", "Possibly AI-assisted", "Likely human-authored".
-        The aiGeneration.indicators array should list 3-6 short bullet-style explanations of the signals you observed (e.g., repetitive phrasing, lack of citations, unnatural structure).
-        Explicitly consider AI-generation signals such as perplexity, repetition, unnatural transitions, template-like structure, inconsistent voice, lack of concrete references, or suspicious citation patterns.
-        
+        Do not include any additional commentary outside the JSON.
+        Use your search tool to verify claims against credible sources when possible.
+        Evaluate bias based on framing, source selection, and omission of context.
+        Highlight manipulative sentiment cues such as catastrophizing, scapegoating, or emotionally charged absolutes.
+        Predict how the narrative could propagate across communities or platforms, noting any early warning signals.
+
         Text to analyze:
         ---
         ${content}
@@ -571,6 +721,21 @@ export const analyzeContent = async (content: string): Promise<AnalysisResult> =
             keyClaims: sanitizeKeyClaims(parsedData.keyClaims),
             aiGeneration: sanitizeAiGeneration(parsedData.aiGeneration),
         };
+
+        const biasDetection = sanitizeBiasDetection((parsedData as { biasDetection?: unknown }).biasDetection);
+        if (biasDetection) {
+            sanitizedResult.biasDetection = biasDetection;
+        }
+
+        const sentimentManipulation = sanitizeSentimentManipulation((parsedData as { sentimentManipulation?: unknown }).sentimentManipulation);
+        if (sentimentManipulation) {
+            sanitizedResult.sentimentManipulation = sentimentManipulation;
+        }
+
+        const predictiveAlerts = sanitizePredictiveAlerts((parsedData as { predictiveAlerts?: unknown }).predictiveAlerts);
+        if (predictiveAlerts) {
+            sanitizedResult.predictiveAlerts = predictiveAlerts;
+        }
 
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
         // FIX: Replaced the generic type argument on `reduce` with a typed initial value to resolve the "Untyped function calls may not accept type arguments" TypeScript error.

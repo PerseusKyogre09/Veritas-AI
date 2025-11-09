@@ -3,6 +3,9 @@ import { AnalysisResult, AIGenerationAssessment } from '../types';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { XCircleIcon } from './icons/XCircleIcon';
 import { LinkIcon } from './icons/LinkIcon';
+import { ChartPieIcon } from './icons/ChartPieIcon';
+import { LightBulbIcon } from './icons/LightBulbIcon';
+import { BellAlertIcon } from './icons/BellAlertIcon';
 
 interface AnalysisResultDisplayProps {
   result: AnalysisResult;
@@ -150,6 +153,80 @@ const getAiVerdictPalette = (aiGeneration: AIGenerationAssessment) => {
   }
 };
 
+const getSeverityPalette = (score: number) => {
+  if (score >= 70) {
+    return {
+      text: 'text-danger',
+      border: 'border-danger/40',
+      bar: 'bg-danger',
+      accent: 'bg-danger/15',
+    };
+  }
+  if (score >= 40) {
+    return {
+      text: 'text-warning',
+      border: 'border-warning/40',
+      bar: 'bg-warning',
+      accent: 'bg-warning/15',
+    };
+  }
+  return {
+    text: 'text-success',
+    border: 'border-success/40',
+    bar: 'bg-success',
+    accent: 'bg-success/15',
+  };
+};
+
+const getSentimentPalette = (sentiment: 'Positive' | 'Negative' | 'Neutral') => {
+  switch (sentiment) {
+    case 'Positive':
+      return {
+        text: 'text-success',
+        border: 'border-success/40',
+        accent: 'bg-success/10',
+      };
+    case 'Negative':
+      return {
+        text: 'text-danger',
+        border: 'border-danger/40',
+        accent: 'bg-danger/10',
+      };
+    default:
+      return {
+        text: 'text-white',
+        border: 'border-white/15',
+        accent: 'bg-white/10',
+      };
+  }
+};
+
+const getAlertPalette = (level: 'Low' | 'Moderate' | 'High') => {
+  switch (level) {
+    case 'High':
+      return {
+        text: 'text-danger',
+        border: 'border-danger/40',
+        accent: 'bg-danger/15',
+        badge: 'bg-danger/20 text-danger border-danger/40',
+      };
+    case 'Low':
+      return {
+        text: 'text-success',
+        border: 'border-success/40',
+        accent: 'bg-success/15',
+        badge: 'bg-success/20 text-success border-success/40',
+      };
+    default:
+      return {
+        text: 'text-warning',
+        border: 'border-warning/40',
+        accent: 'bg-warning/15',
+        badge: 'bg-warning/20 text-warning border-warning/40',
+      };
+  }
+};
+
 export const AnalysisResultDisplay: React.FC<AnalysisResultDisplayProps> = ({ result }) => {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0C0C0C] p-8 text-white shadow-2xl shadow-black/60 sm:p-10">
@@ -214,6 +291,181 @@ export const AnalysisResultDisplay: React.FC<AnalysisResultDisplayProps> = ({ re
                       ))}
                     </div>
                   )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {result.biasDetection && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="flex items-center gap-2 text-lg font-semibold">
+                <ChartPieIcon className="h-5 w-5 text-primary" />
+                Bias detection
+              </h4>
+              <span className="text-xs uppercase tracking-[0.35em] text-white/40">Framing signals</span>
+            </div>
+            {(() => {
+              const palette = getSeverityPalette(result.biasDetection!.biasScore);
+              return (
+                <div className={`rounded-2xl border ${palette.border} bg-white/5 p-6 shadow-sm shadow-black/40`}>
+                  <div className="flex flex-col gap-6 lg:flex-row">
+                    <div className="space-y-3 lg:w-1/3">
+                      <div className="text-sm font-semibold uppercase tracking-[0.3em] text-white/40">Bias severity</div>
+                      <div className="flex items-end justify-between">
+                        <span className={`text-4xl font-bold ${palette.text}`}>{result.biasDetection!.biasScore}</span>
+                        <span className="text-xs text-white/40">0 (low) – 100 (high)</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                        <div className={`${palette.bar} h-full rounded-full transition-all duration-500`} style={{ width: `${result.biasDetection!.biasScore}%` }} />
+                      </div>
+                      {result.biasDetection!.biasTypes.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/40">Bias types</p>
+                          <div className="flex flex-wrap gap-2">
+                            {result.biasDetection!.biasTypes.map((type, index) => (
+                              <span key={index} className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white/70">
+                                {type}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {result.biasDetection!.impactedAudiences.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/40">Impacted audiences</p>
+                          <div className="flex flex-wrap gap-2">
+                            {result.biasDetection!.impactedAudiences.map((audience, index) => (
+                              <span key={index} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/60">
+                                {audience}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-4">
+                      <p className="text-sm leading-relaxed text-white/70">{result.biasDetection!.summary}</p>
+                      {result.biasDetection!.indicators.length > 0 && (
+                        <ul className="grid gap-3 md:grid-cols-2">
+                          {result.biasDetection!.indicators.map((indicator, index) => (
+                            <li key={index} className={`rounded-xl ${palette.accent} p-3 text-sm text-white/75`}>
+                              {indicator}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {result.sentimentManipulation && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="flex items-center gap-2 text-lg font-semibold">
+                <LightBulbIcon className="h-5 w-5 text-secondary" />
+                Sentiment manipulation
+              </h4>
+              <span className="text-xs uppercase tracking-[0.35em] text-white/40">Tone audit</span>
+            </div>
+            {(() => {
+              const palette = getSentimentPalette(result.sentimentManipulation!.overallSentiment);
+              return (
+                <div className={`rounded-2xl border ${palette.border} bg-white/5 p-6 shadow-sm shadow-black/40`}>
+                  <div className="flex flex-col gap-6 lg:flex-row">
+                    <div className="space-y-3 lg:w-1/3">
+                      <div className="text-sm font-semibold uppercase tracking-[0.3em] text-white/40">Dominant sentiment</div>
+                      <span className={`text-2xl font-bold ${palette.text}`}>{result.sentimentManipulation!.overallSentiment}</span>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs font-semibold text-white/50">
+                          <span>Manipulation score</span>
+                          <span>{result.sentimentManipulation!.manipulationScore}%</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                          <div className={`${palette.text.replace('text-', 'bg-')} h-full rounded-full transition-all duration-500`} style={{ width: `${result.sentimentManipulation!.manipulationScore}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-4">
+                      <p className="text-sm leading-relaxed text-white/70">{result.sentimentManipulation!.summary}</p>
+                      {result.sentimentManipulation!.manipulationSignals.length > 0 && (
+                        <ul className="grid gap-3 md:grid-cols-2">
+                          {result.sentimentManipulation!.manipulationSignals.map((signal, index) => (
+                            <li key={index} className={`${palette.accent} rounded-xl p-3 text-sm text-white/75`}>
+                              {signal}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {result.predictiveAlerts && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="flex items-center gap-2 text-lg font-semibold">
+                <BellAlertIcon className="h-5 w-5 text-warning" />
+                Predictive alerts
+              </h4>
+              <span className="text-xs uppercase tracking-[0.35em] text-white/40">Emerging risks</span>
+            </div>
+            {(() => {
+              const palette = getAlertPalette(result.predictiveAlerts!.alertLevel);
+              return (
+                <div className={`rounded-2xl border ${palette.border} bg-white/5 p-6 shadow-sm shadow-black/40`}>
+                  <div className="flex flex-col gap-6 lg:flex-row">
+                    <div className="space-y-3 lg:w-1/3">
+                      <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] ${palette.badge}`}>
+                        {result.predictiveAlerts!.alertLevel} alert
+                      </span>
+                      <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/40">Confidence</div>
+                      <div className="flex items-end justify-between">
+                        <span className={`text-3xl font-bold ${palette.text}`}>{result.predictiveAlerts!.confidence}%</span>
+                        <span className="text-xs text-white/40">Likelihood of trend</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                        <div className={`${palette.text.replace('text-', 'bg-')} h-full rounded-full transition-all duration-500`} style={{ width: `${result.predictiveAlerts!.confidence}%` }} />
+                      </div>
+                      <p className="text-xs text-white/50">Timeframe: {result.predictiveAlerts!.timeframe}</p>
+                    </div>
+                    <div className="flex-1 space-y-4">
+                      <p className="text-sm leading-relaxed text-white/70">{result.predictiveAlerts!.summary}</p>
+                      {result.predictiveAlerts!.emergingNarratives.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/40">Narratives to monitor</p>
+                          <ul className="grid gap-3 md:grid-cols-2">
+                            {result.predictiveAlerts!.emergingNarratives.map((narrative, index) => (
+                              <li key={index} className={`${palette.accent} rounded-xl p-3 text-sm text-white/75`}>
+                                {narrative}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {result.predictiveAlerts!.recommendedActions.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/40">Suggested actions</p>
+                          <ul className="grid gap-3 md:grid-cols-2">
+                            {result.predictiveAlerts!.recommendedActions.map((action, index) => (
+                              <li key={index} className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
+                                {action}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })()}

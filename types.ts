@@ -63,6 +63,30 @@ export interface AIGenerationAssessment {
     indicators: string[];
 }
 
+export interface BiasDetectionAssessment {
+    biasScore: number;
+    summary: string;
+    biasTypes: string[];
+    impactedAudiences: string[];
+    indicators: string[];
+}
+
+export interface SentimentManipulationAssessment {
+    overallSentiment: 'Positive' | 'Negative' | 'Neutral';
+    manipulationScore: number;
+    summary: string;
+    manipulationSignals: string[];
+}
+
+export interface PredictiveAlert {
+    alertLevel: 'Low' | 'Moderate' | 'High';
+    summary: string;
+    confidence: number;
+    emergingNarratives: string[];
+    recommendedActions: string[];
+    timeframe: string;
+}
+
 export interface CommunityVoteItem {
     id: string;
     headline: string;
@@ -81,6 +105,9 @@ export interface AnalysisResult {
     summary: string;
     keyClaims: KeyClaim[];
     aiGeneration?: AIGenerationAssessment;
+    biasDetection?: BiasDetectionAssessment;
+    sentimentManipulation?: SentimentManipulationAssessment;
+    predictiveAlerts?: PredictiveAlert;
     sources: Source[];
 }
 
