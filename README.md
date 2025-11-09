@@ -15,6 +15,7 @@ An AI-powered misinformation and authorship detection platform that analyzes new
 ## 🚀 Features
 
 - **AI Authorship Detection**: Identifies human-written, AI-assisted, or fully AI-generated content using Gemini AI
+- **Vision-Powered Image Forensics**: Uses Google Cloud Vision to surface AI synthesis cues and provenance hints for uploaded images
 - **Credibility Analysis**: Provides claim-level assessments with scorecards and evidence trails
 - **Web Scraping**: Bypasses CORS restrictions with a Python microservice using Flask and BeautifulSoup
 - **Real-time Analysis**: Live language detection and seamless frontend experience
@@ -36,6 +37,7 @@ An AI-powered misinformation and authorship detection platform that analyzes new
 - **Python Flask** microservice for web scraping
 - **BeautifulSoup4** and **lxml** for HTML parsing
 - **Google Gemini AI** for content analysis
+- **Google Cloud Vision API** for image authenticity and provenance signals
 
 ### Infrastructure
 - **Firebase** (Authentication, Firestore, Hosting)
@@ -47,6 +49,7 @@ An AI-powered misinformation and authorship detection platform that analyzes new
 - Python (v3.8 or higher)
 - Gemini API key from Google AI Studio
 - Firebase project (for authentication and database)
+- Google Cloud project with the Vision API enabled (for image authenticity analysis)
 
 ## 🏃‍♂️ Quick Start
 
@@ -190,6 +193,13 @@ VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
 4. Add your domain to authorized domains for authentication
 5. Copy the config values to your `.env.local` file
 
+### Google Cloud Vision Setup
+
+1. Enable the **Vision API** in your Google Cloud project (`APIs & Services` → `Enable APIs and Services`).
+2. Grant the service account used by Cloud Run the `roles/visionai.imageAnnotator` role (or a role that includes Vision access).
+3. For local development, create a service account key with Vision permissions and set `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json` before running `python app.py` or `scraper_service.py`.
+4. Confirm that billing is enabled on the project; Vision API calls require an active billing account.
+
 ### Python Dependencies
 
 The `requirements.txt` includes:
@@ -198,6 +208,7 @@ The `requirements.txt` includes:
 - requests
 - beautifulsoup4
 - lxml
+- google-cloud-vision
 - google-generativeai
 
 ## 📡 API Documentation

@@ -9,6 +9,26 @@ if (!apiKey) {
 
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
+type VisionVerdict = ImageAnalysisResult['authenticity']['verdict'];
+
+interface VisionLabelHint {
+    description: string;
+    score: number;
+}
+
+interface VisionAnalysisSummary {
+    aiScore: number;
+    verdict: VisionVerdict;
+    confidence: number;
+    rationale: string;
+    indicators: string[];
+    warnings: string[];
+    suggestedActions: string[];
+    bestGuessLabels: string[];
+    labelHints: VisionLabelHint[];
+    suspiciousDomains: string[];
+}
+
 const clampScore = (input: unknown): number => {
     const numericValue = typeof input === 'number' ? input : Number(input);
     if (!Number.isFinite(numericValue)) {
@@ -131,6 +151,168 @@ const arrayBufferToBase64 = async (blob: Blob): Promise<string> => {
     }
 
     throw new Error('Base64 encoding is not supported in this environment.');
+};
+
+const sanitizeVisionSummary = (payload: unknown): VisionAnalysisSummary | null => {
+    if (!payload || typeof payload !== 'object') {
+        return null;
+    }
+
+    const data = payload as Record<string, unknown>;
+    const allowedVerdicts: ReadonlyArray<VisionVerdict> = [
+        'Likely AI-generated',
+        'Possibly AI-assisted',
+        'Likely human-captured',
+    ];
+
+    const aiScore = clampScore(data.aiScore);
+    const rawVerdict = typeof data.verdict === 'string' ? data.verdict.trim() : '';
+    const verdict = allowedVerdicts.includes(rawVerdict as VisionVerdict)
+        ? (rawVerdict as VisionVerdict)
+        : 'Possibly AI-assisted';
+
+    const confidence = clampScore(data.confidence);
+    const rationale = sanitizeText(
+        data.rationale,
+        'Vision analysis did not surface an explicit rationale.',
+    );
+
+    const indicators = sanitizeStringArray(data.indicators, [], 6);
+    const warnings = sanitizeStringArray(data.warnings, [], 6);
+    const suggestedActions = sanitizeStringArray(data.suggestedActions, [], 6);
+    const bestGuessLabels = sanitizeStringArray(data.bestGuessLabels, [], 5);
+    const suspiciousDomains = sanitizeStringArray(data.suspiciousDomains, [], 5);
+
+    const labelHintsRaw = Array.isArray(data.labelHints) ? data.labelHints : [];
+    const labelHints: VisionLabelHint[] = labelHintsRaw
+        .map((hint): VisionLabelHint | null => {
+            if (!hint || typeof hint !== 'object') {
+                return null;
+            }
+            const description = sanitizeText((hint as { description?: unknown }).description, '');
+            const scoreValue = (hint as { score?: unknown }).score;
+            if (!description) {
+                return null;
+            }
+            const numericScore = typeof scoreValue === 'number'
+                ? scoreValue
+                : Number(scoreValue);
+            const safeScore = Number.isFinite(numericScore)
+                ? Math.max(0, Math.min(1, Number(numericScore)))
+                : 0;
+            return {
+                description,
+                score: Number.parseFloat(safeScore.toFixed(3)),
+            };
+        })
+        .filter((hint): hint is VisionLabelHint => hint !== null)
+        .slice(0, 5);
+
+    return {
+        aiScore,
+        verdict,
+        confidence,
+        rationale,
+        indicators,
+        warnings,
+        suggestedActions,
+        bestGuessLabels,
+        labelHints,
+        suspiciousDomains,
+    };
+};
+
+const fetchVisionInsights = async (base64Data: string, mimeType: string): Promise<VisionAnalysisSummary | null> => {
+    const backendBase = import.meta.env.VITE_BACKEND_URL
+        ? import.meta.env.VITE_BACKEND_URL.replace(/\/$/, '')
+        : 'http://localhost:5000';
+
+    const endpoint = `${backendBase}/vision/analyze`;
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ imageBase64: base64Data, mimeType }),
+        });
+
+        if (!response.ok) {
+            console.warn('Vision analysis request failed:', response.status, response.statusText);
+            return null;
+        }
+
+        const payload = await response.json();
+        return sanitizeVisionSummary(payload);
+    } catch (error) {
+        console.warn('Vision analysis request encountered an error:', error);
+        return null;
+    }
+};
+
+const applyVisionInsights = (result: ImageAnalysisResult, vision: VisionAnalysisSummary): void => {
+    const indicatorSeeds: string[] = [
+        ...vision.indicators,
+        ...(vision.bestGuessLabels.length > 0
+            ? [`Vision best guesses: ${vision.bestGuessLabels.join(', ')}`]
+            : []),
+        ...(vision.suspiciousDomains.length > 0
+            ? [`Vision reverse-search overlap: ${vision.suspiciousDomains.join(', ')}`]
+            : []),
+        ...(result.authenticity.indicators ?? []),
+    ];
+
+    result.authenticity.indicators = sanitizeStringArray(indicatorSeeds, [], 6);
+
+    const mergedWarnings = sanitizeStringArray([
+        ...result.contentWarnings,
+        ...vision.warnings,
+    ], [], 6);
+    result.contentWarnings = mergedWarnings;
+
+    const mergedActions = sanitizeStringArray([
+        ...vision.suggestedActions,
+        ...result.suggestedActions,
+    ], [], 6);
+    result.suggestedActions = mergedActions;
+
+    const rationaleWithVision = `${result.authenticity.rationale} Vision: ${vision.rationale}`.trim();
+    result.authenticity.rationale = sanitizeText(
+        rationaleWithVision,
+        result.authenticity.rationale,
+    );
+
+    const averagedConfidence = Math.round((result.authenticity.confidence + vision.confidence) / 2);
+    result.authenticity.confidence = clampScore(averagedConfidence);
+
+    const candidateRisk = clampScore(vision.aiScore);
+    if (candidateRisk > 0) {
+        const existingRisk = result.authenticity.riskScore;
+        if (typeof existingRisk === 'number' && Number.isFinite(existingRisk)) {
+            result.authenticity.riskScore = Math.max(existingRisk, candidateRisk);
+        } else {
+            result.authenticity.riskScore = candidateRisk;
+        }
+    }
+
+    const escalateVerdict = (
+        current: VisionVerdict,
+        incoming: VisionVerdict,
+    ): VisionVerdict => {
+        if (incoming === 'Likely AI-generated') {
+            return 'Likely AI-generated';
+        }
+        if (incoming === 'Possibly AI-assisted' && current === 'Likely human-captured') {
+            return 'Possibly AI-assisted';
+        }
+        return current;
+    };
+
+    result.authenticity.verdict = escalateVerdict(
+        result.authenticity.verdict,
+        vision.verdict,
+    );
 };
 
 const runImageSuspicionAudit = async (params: {
@@ -424,11 +606,12 @@ export const analyzeImage = async (image: File | Blob): Promise<ImageAnalysisRes
         : 'image/png';
 
     const base64Data = await arrayBufferToBase64(image);
+    const visionInsightsPromise = fetchVisionInsights(base64Data, mimeType);
 
     if (!apiKey) {
         console.log('Using mock image analyzer...');
         await new Promise(resolve => setTimeout(resolve, 1500));
-        return {
+        const mockResult: ImageAnalysisResult = {
             summary: 'Mock analysis: The composition appears consistent with a staged press photo. Lighting and reflections look natural, but the subject exhibits subtle smoothing consistent with AI touch-ups.',
             authenticity: {
                 verdict: 'Possibly AI-assisted',
@@ -447,6 +630,11 @@ export const analyzeImage = async (image: File | Blob): Promise<ImageAnalysisRes
                 'Inspect EXIF metadata using a trusted tool if available.',
             ],
         };
+        const visionInsights = await visionInsightsPromise;
+        if (visionInsights) {
+            applyVisionInsights(mockResult, visionInsights);
+        }
+        return mockResult;
     }
 
         const model = 'gemini-2.5-flash';
@@ -474,6 +662,7 @@ export const analyzeImage = async (image: File | Blob): Promise<ImageAnalysisRes
         `;
 
     try {
+        const suspicionPromise = runImageSuspicionAudit({ base64Data, mimeType });
         const response = await ai.models.generateContent({
             model,
             contents: [
@@ -536,7 +725,14 @@ export const analyzeImage = async (image: File | Blob): Promise<ImageAnalysisRes
             suggestedActions: sanitizeStringArray(parsed.suggestedActions, [], 6),
         };
 
-        const suspicion = await runImageSuspicionAudit({ base64Data, mimeType });
+        const [visionInsights, suspicion] = await Promise.all([
+            visionInsightsPromise,
+            suspicionPromise,
+        ]);
+
+        if (visionInsights) {
+            applyVisionInsights(sanitizedResult, visionInsights);
+        }
 
         if (suspicion) {
             sanitizedResult.authenticity.riskScore = suspicion.riskScore;
