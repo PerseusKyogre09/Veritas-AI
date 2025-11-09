@@ -435,6 +435,14 @@ const sanitizeAiGeneration = (raw: unknown): AIGenerationAssessment | undefined 
     return { verdict, likelihoodScore, confidence, rationale, indicators };
 };
 
+const buildDefaultBiasDetection = (): BiasDetectionAssessment => ({
+    biasScore: 0,
+    summary: 'No overt bias cues surfaced in this content.',
+    biasTypes: [],
+    impactedAudiences: [],
+    indicators: ['No bias indicators detected by the model.'],
+});
+
 const sanitizeBiasDetection = (raw: unknown): BiasDetectionAssessment | undefined => {
     if (!raw || typeof raw !== 'object') {
         return undefined;
@@ -458,6 +466,13 @@ const sanitizeBiasDetection = (raw: unknown): BiasDetectionAssessment | undefine
         indicators,
     };
 };
+
+const buildDefaultSentimentManipulation = (): SentimentManipulationAssessment => ({
+    overallSentiment: 'Neutral',
+    manipulationScore: 0,
+    summary: 'No manipulative sentiment cues highlighted by the model.',
+    manipulationSignals: ['No emotive manipulation indicators flagged.'],
+});
 
 const sanitizeSentimentManipulation = (raw: unknown): SentimentManipulationAssessment | undefined => {
     if (!raw || typeof raw !== 'object') {
@@ -487,6 +502,15 @@ const sanitizeSentimentManipulation = (raw: unknown): SentimentManipulationAsses
         manipulationSignals,
     };
 };
+
+const buildDefaultPredictiveAlert = (): PredictiveAlert => ({
+    alertLevel: 'Low',
+    summary: 'No emerging misinformation trajectories flagged.',
+    confidence: 0,
+    emergingNarratives: ['No emerging misinformation narratives detected.'],
+    recommendedActions: ['Maintain routine monitoring cadence.'],
+    timeframe: 'No emerging trend horizon identified.',
+});
 
 const sanitizePredictiveAlerts = (raw: unknown): PredictiveAlert | undefined => {
     if (!raw || typeof raw !== 'object') {
@@ -722,20 +746,36 @@ export const analyzeContent = async (content: string): Promise<AnalysisResult> =
             aiGeneration: sanitizeAiGeneration(parsedData.aiGeneration),
         };
 
-        const biasDetection = sanitizeBiasDetection((parsedData as { biasDetection?: unknown }).biasDetection);
-        if (biasDetection) {
-            sanitizedResult.biasDetection = biasDetection;
-        }
+        const biasDetection = sanitizeBiasDetection((parsedData as { biasDetection?: unknown }).biasDetection) ?? buildDefaultBiasDetection();
+        sanitizedResult.biasDetection = {
+            ...biasDetection,
+            summary: biasDetection.summary.trim().length > 0 ? biasDetection.summary : 'No overt bias cues surfaced in this content.',
+            indicators: biasDetection.indicators.length > 0 ? biasDetection.indicators : ['No bias indicators detected by the model.'],
+            biasTypes: biasDetection.biasTypes.length > 0 ? biasDetection.biasTypes : [],
+            impactedAudiences: biasDetection.impactedAudiences.length > 0 ? biasDetection.impactedAudiences : [],
+        };
 
-        const sentimentManipulation = sanitizeSentimentManipulation((parsedData as { sentimentManipulation?: unknown }).sentimentManipulation);
-        if (sentimentManipulation) {
-            sanitizedResult.sentimentManipulation = sentimentManipulation;
-        }
+        const sentimentManipulation = sanitizeSentimentManipulation((parsedData as { sentimentManipulation?: unknown }).sentimentManipulation) ?? buildDefaultSentimentManipulation();
+        sanitizedResult.sentimentManipulation = {
+            ...sentimentManipulation,
+            summary: sentimentManipulation.summary.trim().length > 0 ? sentimentManipulation.summary : 'No manipulative sentiment cues highlighted by the model.',
+            manipulationSignals: sentimentManipulation.manipulationSignals.length > 0
+                ? sentimentManipulation.manipulationSignals
+                : ['No emotive manipulation indicators flagged.'],
+        };
 
-        const predictiveAlerts = sanitizePredictiveAlerts((parsedData as { predictiveAlerts?: unknown }).predictiveAlerts);
-        if (predictiveAlerts) {
-            sanitizedResult.predictiveAlerts = predictiveAlerts;
-        }
+        const predictiveAlerts = sanitizePredictiveAlerts((parsedData as { predictiveAlerts?: unknown }).predictiveAlerts) ?? buildDefaultPredictiveAlert();
+        sanitizedResult.predictiveAlerts = {
+            ...predictiveAlerts,
+            summary: predictiveAlerts.summary.trim().length > 0 ? predictiveAlerts.summary : 'No emerging misinformation trajectories flagged.',
+            emergingNarratives: predictiveAlerts.emergingNarratives.length > 0
+                ? predictiveAlerts.emergingNarratives
+                : ['No emerging misinformation narratives detected.'],
+            recommendedActions: predictiveAlerts.recommendedActions.length > 0
+                ? predictiveAlerts.recommendedActions
+                : ['Maintain routine monitoring cadence.'],
+            timeframe: predictiveAlerts.timeframe.trim().length > 0 ? predictiveAlerts.timeframe : 'No emerging trend horizon identified.',
+        };
 
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
         // FIX: Replaced the generic type argument on `reduce` with a typed initial value to resolve the "Untyped function calls may not accept type arguments" TypeScript error.
